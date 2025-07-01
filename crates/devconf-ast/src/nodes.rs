@@ -25,7 +25,7 @@ pub enum AstExpr {
         property: String,
     },
     Interpolation {
-        expr: Box<AstExpr>, // we moved the type cast into a special `AstExpr::TypedIdent` to be able to track it
+        expr: Box<AstExpr>, // we moved the type cast into a `AstExpr::Cast` to be able to track it
     },
     FunctionCall {
         name: String,

@@ -868,6 +868,20 @@ mod tests {
     }
 
     #[test]
+    fn test_complex_interpolation_with_expression() {
+        let input = "port: ${APP_PORT:int || 8080}";
+        let scope = create_scope(input);
+        assert_eq!(
+            scope,
+            scope![stmt![@assign "port".to_owned().into(),
+                expr![@inter
+                    expr![
+                    @bin expr!(@cast expr!(@ident "APP_PORT".to_owned()), "int".to_owned()).into(), Or, expr!(@lit 8080.into()).into()
+                    ].into()].into()]]
+        )
+    }
+
+    #[test]
     #[should_panic = "Received :, so there was expected a type hint, but instead no one was provided\n if you don't want to add a type hint, just close the interpolation"]
     fn test_invalid_assignment_and_interpolation() {
         let input = "port: ${APP_PORT:}";
