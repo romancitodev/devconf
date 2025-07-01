@@ -12,6 +12,9 @@ deps: [tokio, thiserror]
 
 config: {
    logging: true,
+   browser: {
+      extensions: null
+   },
 }
 
 bar: { rock: roll, never: "gonna give you up" }

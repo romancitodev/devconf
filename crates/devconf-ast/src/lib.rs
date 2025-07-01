@@ -521,7 +521,11 @@ impl SourceAst<'_> {
             };
 
             self.expect_token(T![Colon]);
-            let value = self.parse_expr();
+            let value = match self.parse_expr() {
+                AstExpr::Ident(id) => AstExpr::Literal(Literal::UnquotedString(id)),
+                ast => ast,
+            };
+
             pairs.push((key, value));
 
             if let Some(token) = self.clone().peek() {
