@@ -25,12 +25,15 @@ pub enum AstExpr {
         property: String,
     },
     Interpolation {
-        expr: Box<AstExpr>,
-        type_cast: Option<String>, // for :int, :string, etc.
+        expr: Box<AstExpr>, // we moved the type cast into a special `AstExpr::TypedIdent` to be able to track it
     },
     FunctionCall {
         name: String,
         args: Vec<AstExpr>,
+    },
+    Cast {
+        expr: Box<AstExpr>,
+        ty: String,
     },
 }
 

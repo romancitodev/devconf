@@ -549,52 +549,109 @@ impl SourceAst<'_> {
         let mut peek = self.clone();
         peek.expect_token(T![Dollar]);
         peek.expect_token(T![OpenBrace]);
-        let expr = peek.parse_expr();
 
-        let type_cast = match peek.peek() {
-            Some(token) if matches!(**token, T![Colon]) => {
-                // Guardar el span del ':' ANTES de consumirlo
+        // Parse the base expression (identifier first)
+        let mut expr = peek.parse_primary_expr_for_interpolation();
+
+        // Check for optional type cast
+        if let Some(token) = peek.peek() {
+            if matches!(**token, T![Colon]) {
                 let colon_span = token.span;
-                drop(token); // Liberar la referencia
-                peek.tokens.pop_front(); // Consumir el ':'
 
-                // Verificar si hay un identificador después
                 match peek.tokens.front() {
                     Some(next_token) if matches!(**next_token, Token::Ident(_)) => {
                         if let Token::Ident(ref type_name) = **next_token {
                             let type_name = type_name.clone();
                             peek.tokens.pop_front(); // Consume the type token
-                            Some(type_name)
-                        } else {
-                            unreachable!() // Ya verificamos que es Ident
+
+                            // Wrap the expression in a Cast
+                            expr = AstExpr::Cast {
+                                expr: Box::new(expr),
+                                ty: type_name,
+                            };
                         }
                     }
-                    Some(next_token) => {
-                        // Error: expected type after ':'
-                        peek.error_at(next_token.span, format!("Received :, so there was expected an type hint, but instead found: '{}'\n if you don't want to add a type hint, just close the interpolation", **next_token));
+
+                    Some(next_token) if matches!(**next_token, T![CloseBrace]) => {
+                        peek.error_at(colon_span, format!("Received :, so there was expected a type hint, but instead no one was provided\n if you don't want to add a type hint, just close the interpolation"));
                     }
                     None => {
-                        // Error: no token after ':'
-                        peek.error_at(colon_span, format!("Received :, so there was expected a type but instead no one was provided\n if you don't want to add a type hint, just close the interpolation"));
+                        peek.error_at(colon_span, format!("Received :, so there was expected a type hint, but instead no one was provided\n if you don't want to add a type hint, just close the interpolation"));
+                    }
+                    Some(next_token) => {
+                        peek.error_at(next_token.span, format!("Received :, so there was expected a type hint, but instead found: '{}'\n if you don't want to add a type hint, just close the interpolation", **next_token));
                     }
                 }
-            }
-            Some(token) => {
+            } else {
                 token.recover();
-                None
             }
-            None => None,
-        };
+        }
+
+        // Now continue parsing any binary operators (like ||)
+        expr = peek.parse_binary_continuation(expr);
 
         peek.expect_token(T![CloseBrace]);
-
-        // Solo sincronizar si llegamos hasta aquí sin errores
         *self = peek;
 
         AstExpr::Interpolation {
             expr: Box::new(expr),
-            type_cast,
         }
+    }
+
+    // Helper function to parse just the primary expression in interpolation context
+    fn parse_primary_expr_for_interpolation(&mut self) -> AstExpr {
+        let token = self.peek_expect();
+
+        match **token {
+            Token::Ident(ref name) => {
+                let name = name.clone();
+                AstExpr::Ident(name)
+            }
+            Token::Literal(ref lit) => {
+                let lit = lit.clone();
+                AstExpr::Literal(lit)
+            }
+            T![OpenParen] => {
+                self.tokens.pop_front();
+                let expr = self.parse_expr();
+                self.expect_token(T![CloseParen]);
+                expr
+            }
+            _ => {
+                let token = token.accept();
+                self.error_at(
+                    token.span,
+                    format!("Unexpected token in interpolation: {:?}", token.token),
+                );
+            }
+        }
+    }
+
+    // Helper function to continue parsing binary expressions
+    fn parse_binary_continuation(&mut self, left: AstExpr) -> AstExpr {
+        // Start with logical OR (lowest precedence in your hierarchy)
+        self.parse_logical_or_continuation(left)
+    }
+
+    fn parse_logical_or_continuation(&mut self, mut expr: AstExpr) -> AstExpr {
+        while let Some(token) = self.peek() {
+            match **token {
+                T![Or] => {
+                    self.tokens.pop_front();
+                    let right = self.parse_logical_and();
+                    expr = AstExpr::BinaryExpr {
+                        op: AstBinaryOp::Or,
+                        left: Box::new(expr),
+                        right: Box::new(right),
+                    };
+                }
+                _ => {
+                    token.recover();
+                    break;
+                }
+            }
+        }
+        expr
     }
 
     fn error_unexpected_token(&mut self, token: SpannedToken) -> ! {
@@ -769,12 +826,38 @@ mod tests {
         assert_eq!(
             scope,
             scope![ast![@assign "port".to_owned().into(),
-                stmt![@inter stmt!(@unboxed @ident "APP_PORT".to_owned().into()), None].into()]]
+                stmt![@inter stmt!(@unboxed @ident "APP_PORT".to_owned().into())].into()]]
         )
     }
 
     #[test]
-    #[should_panic = "Received :, so there was expected a type but instead no one was provided\n if you don't want to add a type hint, just close the interpolation"]
+    fn test_assignment_and_interpolation_with_type() {
+        let input = "port: ${APP_PORT:int}";
+        let scope = create_scope(input);
+        assert_eq!(
+            scope,
+            scope![ast![@assign "port".to_owned().into(),
+                stmt![@inter stmt!(
+                    @cast stmt!(@unboxed @ident "APP_PORT".to_owned().into()
+                ).into(),
+                    "int".to_owned()
+                )].into()]]
+        )
+    }
+
+    #[test]
+    fn test_interpolation_with_expression() {
+        let input = "port: ${APP_PORT || 8080}";
+        let scope = create_scope(input);
+        assert_eq!(
+            scope,
+            scope![ast![@assign "port".to_owned().into(),
+                stmt![@inter stmt!(@unboxed @ident "APP_PORT".to_owned().into())].into()]]
+        )
+    }
+
+    #[test]
+    #[should_panic = "Received :, so there was expected a type hint, but instead no one was provided\n if you don't want to add a type hint, just close the interpolation"]
     fn test_invalid_assignment_and_interpolation() {
         let input = "port: ${APP_PORT:}";
         _ = create_scope(input);

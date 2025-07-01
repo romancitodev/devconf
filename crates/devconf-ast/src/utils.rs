@@ -79,12 +79,17 @@ macro_rules! stmt {
     (@object $($key:expr => $value:expr),*) => {
         Box::new($crate::nodes::AstExpr::Object(vec![$(($key, $value)),*]))
     };
-    (@inter $expr:expr, $type_cast:expr) => {
+    (@inter $expr:expr) => {
         $crate::nodes::AstExpr::Interpolation {
             expr: Box::new($expr),
-            type_cast: $type_cast,
         }
     };
+    (@cast $expr:expr, $cast:expr) => {
+        $crate::nodes::AstExpr::Cast {
+            expr: $expr,
+            ty: $cast
+        }
+    }
 }
 
 pub use ast;
