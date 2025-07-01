@@ -1,0 +1,32 @@
+# hola
+name: "hello" # xd
+other: 'app'
+pepe: chau
+
+pi: 3.141592
+# a_number: 1_000_000
+a_number: 1_000_000.1234
+pepe: .5
+
+app.debug: ${NODE_ENV == "debug"}
+
+hello && good_bye
+hello || good_bye
+hello == good_bye
+hello != good_bye
+
+@if activated?
+
+falsy: false2
+true: a
+topics: [metrics, analytics, "rust"]
+app.name: hola
+
+app: {
+      config: true
+}
+
+@if hola
+      hola
+
+@template

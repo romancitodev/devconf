@@ -1,0 +1,17 @@
+# This a comment
+name: app
+version: "0.1.0"
+publish: false # Only set it to true if you want to really publish it
+foo: 5.0
+
+likes: 78_464_123
+
+avg: 78.45_112
+
+deps: [tokio, thiserror]
+
+config: {
+   logging: true,
+}
+
+bar: { rock: roll, never: "gonna give you up" }
