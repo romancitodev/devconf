@@ -4,6 +4,10 @@
 
 DevConf is a powerful, human-friendly configuration language designed for developers who want more than basic key-value pairs. With built-in templating, environment variable interpolation, and expressive syntax, DevConf makes managing complex application configurations simple and maintainable.
 
+> [!WARNING]
+> This repo is in **Heavy Development** and in an alpha stage, some things doesn't work yet but will do it soon.
+> For more info, go to [The current status](#️-implementation-status)
+
 ## ✨ Features
 
 - **🎯 Simple & Intuitive**: Clean syntax that's easy to read and write
