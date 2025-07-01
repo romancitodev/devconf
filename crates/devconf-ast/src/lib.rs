@@ -185,7 +185,6 @@ impl SourceAst<'_> {
 
     fn parse_logical_or(&mut self) -> AstExpr {
         let mut expr = self.parse_logical_and();
-
         while let Some(token) = self.peek() {
             match **token {
                 T![Or] => {
@@ -212,7 +211,6 @@ impl SourceAst<'_> {
         while let Some(token) = self.peek() {
             match **token {
                 T![And] => {
-                    self.tokens.pop_front();
                     let right = self.parse_equality();
                     expr = AstExpr::BinaryExpr {
                         op: AstBinaryOp::And,
@@ -242,7 +240,6 @@ impl SourceAst<'_> {
                 }
             };
 
-            self.tokens.pop_front();
             let right = self.parse_unary();
             expr = AstExpr::BinaryExpr {
                 op,
@@ -257,7 +254,6 @@ impl SourceAst<'_> {
         if let Some(token) = self.peek() {
             match **token {
                 T![Bang] => {
-                    self.tokens.pop_front();
                     let expr = self.parse_unary();
                     return AstExpr::UnaryExpr {
                         op: AstUnaryOp::Not,
@@ -300,13 +296,13 @@ impl SourceAst<'_> {
                 self.parse_interpolation()
             }
             T![OpenParen] => {
-                self.tokens.pop_front();
+                // self.tokens.pop_front();
                 let expr = self.parse_expr();
                 self.expect_token(T![CloseParen]);
                 expr
             }
             lit!(Null) => {
-                self.tokens.pop_front();
+                // self.tokens.pop_front();
                 AstExpr::Literal(Literal::Null)
             }
             _ => {
@@ -552,7 +548,6 @@ impl SourceAst<'_> {
 
         // Parse the base expression (identifier first)
         let mut expr = peek.parse_primary_expr_for_interpolation();
-
         // Check for optional type cast
         if let Some(token) = peek.peek() {
             if matches!(**token, T![Colon]) {
@@ -586,8 +581,6 @@ impl SourceAst<'_> {
                 token.recover();
             }
         }
-
-        // Now continue parsing any binary operators (like ||)
         expr = peek.parse_binary_continuation(expr);
 
         peek.expect_token(T![CloseBrace]);
@@ -637,7 +630,6 @@ impl SourceAst<'_> {
         while let Some(token) = self.peek() {
             match **token {
                 T![Or] => {
-                    self.tokens.pop_front();
                     let right = self.parse_logical_and();
                     expr = AstExpr::BinaryExpr {
                         op: AstBinaryOp::Or,
@@ -673,10 +665,16 @@ mod tests {
     fn test_simple_string() {
         let input = "\"Hello, world!\"";
         let scope = create_scope(input);
-        assert_eq!(scope, scope![ast!(@expr "Hello, world!".to_owned().into())]);
+        assert_eq!(
+            scope,
+            scope![stmt!(@expr "Hello, world!".to_owned().into())]
+        );
         let input = "'Hello, world!'";
         let scope = create_scope(input);
-        assert_eq!(scope, scope![ast!(@expr "Hello, world!".to_owned().into())]);
+        assert_eq!(
+            scope,
+            scope![stmt!(@expr "Hello, world!".to_owned().into())]
+        );
     }
 
     #[test]
@@ -685,8 +683,8 @@ mod tests {
         let scope = create_scope(input);
         assert_eq!(
             scope,
-            scope![ast! {
-                @assign "app".to_owned().into(), stmt!(@lit "rust".to_owned().into())
+            scope![stmt! {
+                @assign "app".to_owned().into(), expr!(@lit "rust".to_owned().into())
             }]
         );
     }
@@ -697,8 +695,8 @@ mod tests {
         let scope = create_scope(input);
         assert_eq!(
             scope,
-            scope![ast! {
-                @assign "app".to_owned().into(), stmt!(@unquoted "rust".to_owned().into())
+            scope![stmt! {
+                @assign "app".to_owned().into(), expr!(@unquoted "rust".to_owned().into())
             }]
         );
     }
@@ -709,8 +707,8 @@ mod tests {
         let scope = create_scope(input);
         assert_eq!(
             scope,
-            scope![ast! {
-                @assign "version".to_owned().into(), stmt!(@lit 1.into())
+            scope![stmt! {
+                @assign "version".to_owned().into(), expr!(@lit 1.into())
             }]
         );
     }
@@ -721,8 +719,8 @@ mod tests {
         let scope = create_scope(input);
         assert_eq!(
             scope,
-            scope![ast! {
-                @assign "version".to_owned().into(), stmt!(@lit 123456.into())
+            scope![stmt! {
+                @assign "version".to_owned().into(), expr!(@lit 123456.into())
             }]
         );
     }
@@ -740,8 +738,8 @@ mod tests {
         let scope = create_scope(input);
         assert_eq!(
             scope,
-            scope![ast! {
-                @assign "app".to_owned().into(), stmt!(@lit "rust".to_owned().into())
+            scope![stmt! {
+                @assign "app".to_owned().into(), expr!(@lit "rust".to_owned().into())
             }]
         );
     }
@@ -752,12 +750,12 @@ mod tests {
         let scope = create_scope(input);
         assert_eq!(
             scope,
-            scope![ast! {
+            scope![stmt! {
                 @assign "items".to_owned().into(),
-                stmt![@array
-                    stmt![@unboxed @lit "apple".to_owned().into()],
-                    stmt![@unboxed @lit "banana".to_owned().into()],
-                    stmt![@unboxed @lit "cherry".to_owned().into()]
+                expr![@array
+                    expr![@unboxed @lit "apple".to_owned().into()],
+                    expr![@unboxed @lit "banana".to_owned().into()],
+                    expr![@unboxed @lit "cherry".to_owned().into()]
                 ]
             }]
         );
@@ -769,14 +767,14 @@ mod tests {
         let scope = create_scope(input);
         assert_eq!(
             scope,
-            scope![ast! {
+            scope![stmt! {
                 @assign "items".to_owned().into(),
-                stmt![@array
-                    stmt![@unboxed @unquoted "apple".to_owned().into()],
-                    stmt![@unboxed @lit "banana".to_owned().into()],
-                    stmt![@unboxed @lit "cherry".to_owned().into()],
-                    stmt![@unboxed @lit true.into()],
-                    stmt![@unboxed @lit 42.into()]
+                expr![@array
+                    expr![@unboxed @unquoted "apple".to_owned().into()],
+                    expr![@unboxed @lit "banana".to_owned().into()],
+                    expr![@unboxed @lit "cherry".to_owned().into()],
+                    expr![@unboxed @lit true.into()],
+                    expr![@unboxed @lit 42.into()]
                 ]
             }]
         );
@@ -788,12 +786,12 @@ mod tests {
         let scope = create_scope(input);
         assert_eq!(
             scope,
-            scope![ast! {
+            scope![stmt! {
                 @assign "items".to_owned().into(),
-                stmt![@object
-                    "apple".to_owned() => stmt![@unboxed @lit 1.into()],
-                    "banana".to_owned() => stmt![@unboxed @lit 2.into()],
-                    "cherry".to_owned() => stmt![@unboxed @lit 3.into()]
+                expr![@object
+                    "apple".to_owned() => expr![@unboxed @lit 1.into()],
+                    "banana".to_owned() => expr![@unboxed @lit 2.into()],
+                    "cherry".to_owned() => expr![@unboxed @lit 3.into()]
                 ]
             }]
         );
@@ -805,14 +803,14 @@ mod tests {
         let scope = create_scope(input);
         assert_eq!(
             scope,
-            scope![ast! {
+            scope![stmt! {
                 @assign "app".to_owned().into(),
-                stmt![@object
-                    "name".to_owned() => stmt![@unboxed @lit "My App".to_owned().into()],
-                    "version".to_owned() => stmt![@unboxed @lit 1.0.into()],
-                    "authors".to_owned() => *stmt![@array
-                        stmt![@unboxed @unquoted "roman".to_owned().into()],
-                        stmt![@unboxed @lit "Apika luca".to_owned().into()]
+                expr![@object
+                    "name".to_owned() => expr![@unboxed @lit "My App".to_owned().into()],
+                    "version".to_owned() => expr![@unboxed @lit 1.0.into()],
+                    "authors".to_owned() => *expr![@array
+                        expr![@unboxed @unquoted "roman".to_owned().into()],
+                        expr![@unboxed @lit "Apika luca".to_owned().into()]
                     ]
                 ]
             }]
@@ -825,8 +823,19 @@ mod tests {
         let scope = create_scope(input);
         assert_eq!(
             scope,
-            scope![ast![@assign "port".to_owned().into(),
-                stmt![@inter stmt!(@unboxed @ident "APP_PORT".to_owned().into())].into()]]
+            scope![stmt![@assign "port".to_owned().into(),
+                expr![@inter expr!(@unboxed @ident "APP_PORT".to_owned().into())].into()]]
+        )
+    }
+
+    #[test]
+    fn test_paren() {
+        let input = "port: (83)";
+        let scope = create_scope(input);
+        assert_eq!(
+            scope,
+            scope![stmt![@assign "port".to_owned().into(),
+                expr!( @lit 83.into())]]
         )
     }
 
@@ -836,23 +845,25 @@ mod tests {
         let scope = create_scope(input);
         assert_eq!(
             scope,
-            scope![ast![@assign "port".to_owned().into(),
-                stmt![@inter stmt!(
-                    @cast stmt!(@unboxed @ident "APP_PORT".to_owned().into()
+            scope![stmt![@assign "port".to_owned().into(),
+                expr![@inter expr!(
+                    @cast expr!(@unboxed @ident "APP_PORT".to_owned().into()
                 ).into(),
                     "int".to_owned()
                 )].into()]]
         )
     }
-
     #[test]
     fn test_interpolation_with_expression() {
         let input = "port: ${APP_PORT || 8080}";
         let scope = create_scope(input);
         assert_eq!(
             scope,
-            scope![ast![@assign "port".to_owned().into(),
-                stmt![@inter stmt!(@unboxed @ident "APP_PORT".to_owned().into())].into()]]
+            scope![stmt![@assign "port".to_owned().into(),
+                expr![@inter
+                    expr![
+                    @bin expr!(@ident "APP_PORT".to_owned().into()), Or, expr!(@lit 8080.into()).into()
+                    ].into()].into()]]
         )
     }
 
@@ -872,12 +883,12 @@ mod tests {
 
         assert_eq!(
             scope,
-            scope![ast! {
+            scope![stmt! {
                 @dot vec![
                     PathSegment::Static("app".to_owned()),
                     PathSegment::Static("author".to_owned()),
                 ],
-                stmt!(@unboxed @lit "roman".to_owned().into())
+                expr!(@unboxed @lit "roman".to_owned().into())
             }]
         )
     }

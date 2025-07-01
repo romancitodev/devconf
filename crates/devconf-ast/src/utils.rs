@@ -27,7 +27,7 @@ macro_rules! unary_op {
 }
 
 #[macro_export]
-macro_rules! ast {
+macro_rules! stmt {
     (@assign $name:expr, $value:expr) => {
         $crate::nodes::AstStatement::Assignation($name, $value)
     };
@@ -50,7 +50,7 @@ macro_rules! ast {
 }
 
 #[macro_export]
-macro_rules! stmt {
+macro_rules! expr {
     (@lit $expr:expr) => {
         Box::new($crate::nodes::AstExpr::Literal($expr))
     };
@@ -89,10 +89,17 @@ macro_rules! stmt {
             expr: $expr,
             ty: $cast
         }
+    };
+    (@bin $left:expr, $op:ident, $right:expr) => {
+        $crate::nodes::AstExpr::BinaryExpr {
+            op: $crate::nodes::AstBinaryOp::$op,
+            left: $left,
+            right: $right
+        }
     }
 }
 
-pub use ast;
 pub use bin_op;
 pub use scope;
+pub use stmt;
 pub use unary_op;
