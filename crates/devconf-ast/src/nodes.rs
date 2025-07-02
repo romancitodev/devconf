@@ -20,10 +20,6 @@ pub enum AstExpr {
     },
     Array(Vec<AstExpr>),
     Object(Vec<(String, AstExpr)>),
-    DotAccess {
-        object: Box<AstExpr>,
-        property: String,
-    },
     Interpolation {
         expr: Box<AstExpr>, // we moved the type cast into a `AstExpr::Cast` to be able to track it
     },
@@ -89,14 +85,13 @@ pub enum PathSegment {
 #[derive(Debug, Clone, PartialEq)]
 pub enum AstStatement {
     Comment,
-    Assignation(String, Box<AstExpr>),
     Expression(Box<AstExpr>),
     Conditional {
         test: Box<AstExpr>,
         body: AstScope,
         otherwise: Option<AstScope>,
     },
-    DotAssignation {
+    Assignation {
         path: Vec<PathSegment>,
         value: Box<AstExpr>,
     },

@@ -102,54 +102,75 @@ impl SourceAst<'_> {
     }
 
     fn parse_statement(&mut self, level: usize) -> AstStatement {
+        let mut checkpoint = self.clone();
         let first = self.peek_expect();
-        let first_clone = first.clone();
 
         println!("parse_statement: token = {:?}", first);
 
         match **first {
             Token::Comment(_) => AstStatement::Comment,
             Token::Ident(_) => {
-                if self.is_dot_assignment() {
-                    self.parse_dot_assignment()
-                } else {
-                    if let Some(next) = self.peek() {
-                        println!("testing next: {next:?}");
-                        if matches!(**next, T![Colon]) {
-                            println!("colon detected");
-                            next.recover();
-                            // Now we can safely get the identifier
-                            let ident = first_clone.into_ident().expect("Checked above");
+                let mut segments = vec![]; // this will be the segments for the dot access.
+                first.recover();
 
-                            self.expect_token(T![Colon]);
-
-                            let expr = match self.parse_expr() {
-                                AstExpr::Ident(id) => AstExpr::Literal(Literal::UnquotedString(id)),
-                                e => e,
-                            };
-                            AstStatement::Assignation(ident, expr.into())
-                        } else {
-                            next.recover();
-                            AstStatement::Expression(self.parse_expr().into())
-                        }
-                    } else {
-                        // No next token, treat as expression
-                        AstStatement::Expression(self.parse_expr().into())
+                let mut dot_before = false;
+                while let Some(potencial_token) = checkpoint.peek() {
+                    if *potencial_token == T![Colon] {
+                        break;
                     }
+
+                    let span = potencial_token.span;
+
+                    println!("Assigning to: {:?}", segments);
+
+                    match **potencial_token {
+                        Token::Literal(ref literal) => match literal {
+                            Literal::UnquotedString(id) | Literal::String(id) => {
+                                segments.push(PathSegment::Static(id.clone()));
+                            }
+                            _ => self.error_at(
+                                span,
+                                format!("Seems to be an invalid token ({:?})", literal),
+                            ),
+                        },
+                        Token::Ident(ref id) => {
+                            segments.push(PathSegment::Static(id.clone()));
+                        }
+                        T![Dot] if !dot_before => {
+                            dot_before = true;
+                            continue;
+                        }
+                        T![Dot] => {
+                            self.error_at(span, "You can't have consecutive dots");
+                        }
+                        _ => unimplemented!(),
+                    }
+                }
+
+                *self = checkpoint;
+
+                let expr = match self.parse_expr() {
+                    AstExpr::Ident(id) => AstExpr::Literal(Literal::UnquotedString(id)),
+                    e => e,
+                };
+
+                AstStatement::Assignation {
+                    path: segments,
+                    value: Box::new(expr.into()),
                 }
             }
             kw!(If) => {
                 first.recover(); // Release the borrow
-                self.parse_if_stmt(level)
+                checkpoint.parse_if_stmt(level)
             }
             T![Bang] | Token::Literal(_) => {
                 first.recover();
                 println!("literal detected");
-                AstStatement::Expression(self.parse_expr().into())
+                AstStatement::Expression(checkpoint.parse_expr().into())
             }
             _ => {
                 let first = first.accept();
-                self.error_at(
+                checkpoint.error_at(
                     first.span,
                     format!("Unexpected token ({:?}) or unimplemented yet.", first.token),
                 );
@@ -296,146 +317,15 @@ impl SourceAst<'_> {
                 self.parse_interpolation()
             }
             T![OpenParen] => {
-                // self.tokens.pop_front();
                 let expr = self.parse_expr();
                 self.expect_token(T![CloseParen]);
                 expr
             }
-            lit!(Null) => {
-                // self.tokens.pop_front();
-                AstExpr::Literal(Literal::Null)
-            }
+            lit!(Null) => AstExpr::Literal(Literal::Null),
             _ => {
                 let token = token.accept();
                 self.error_at(token.span, format!("Unexpected token: {:?}", token.token));
             }
-        }
-    }
-
-    fn is_dot_assignment(&mut self) -> bool {
-        let mut peek = self.clone();
-
-        // First token should be an identifier
-        let first_token = peek.peek_expect();
-        if !matches!(**first_token, Token::Ident(_)) {
-            return false;
-        }
-        first_token.accept(); // Consume the first identifier
-
-        println!("is_dot_assignment: first ident consumed");
-
-        // Now look for the pattern: (.ident | .${...})* :
-        let mut found_dot = false;
-
-        while let Some(token) = peek.peek() {
-            println!("is_dot_assignment: checking token = {:#?}", **token);
-
-            match **token {
-                T![Dot] => {
-                    token.accept(); // Consume the dot
-                    found_dot = true;
-
-                    // After dot, expect identifier or interpolation
-                    if let Some(next_token) = peek.peek() {
-                        match **next_token {
-                            Token::Ident(_) => {
-                                next_token.accept(); // Consume the identifier
-                                continue;
-                            }
-                            T![Dollar] => {
-                                next_token.accept(); // Consume the $
-
-                                // Expect opening brace
-                                if let Some(brace_token) = peek.peek() {
-                                    if matches!(**brace_token, T![OpenBrace]) {
-                                        brace_token.accept(); // Consume {
-
-                                        // Skip to matching closing brace
-                                        let mut brace_count = 1;
-                                        while brace_count > 0 {
-                                            if let Some(inner_token) = peek.peek() {
-                                                match **inner_token {
-                                                    T![OpenBrace] => {
-                                                        brace_count += 1;
-                                                        inner_token.accept();
-                                                    }
-                                                    T![CloseBrace] => {
-                                                        brace_count -= 1;
-                                                        inner_token.accept();
-                                                    }
-                                                    _ => {
-                                                        inner_token.accept();
-                                                    }
-                                                }
-                                            } else {
-                                                return false; // Unclosed brace
-                                            }
-                                        }
-                                        continue;
-                                    } else {
-                                        return false; // $ not followed by {
-                                    }
-                                } else {
-                                    return false; // $ at end of input
-                                }
-                            }
-                            _ => {
-                                return false; // Dot not followed by ident or $
-                            }
-                        }
-                    } else {
-                        return false; // Dot at end of input
-                    }
-                }
-                T![Colon] => {
-                    token.recover(); // Don't consume the colon
-                    return found_dot; // Only return true if we found at least one dot
-                }
-                _ => {
-                    token.recover();
-                    return false; // Not a dot assignment
-                }
-            }
-        }
-
-        false // Reached end without finding colon
-    }
-
-    fn parse_dot_assignment(&mut self) -> AstStatement {
-        let mut path = vec![];
-        dbg!("parse_dot_assignment: starting");
-        loop {
-            let token = self.peek_expect();
-            dbg!(&token);
-            let checkpoint = token.clone();
-            match **token {
-                Token::Ident(ref name) => {
-                    path.push(PathSegment::Static(name.clone()));
-                    self.tokens.pop_front();
-                }
-                T![Dollar] => {
-                    self.tokens.pop_front();
-                    self.expect_token(T![OpenBrace]);
-                    let expr = self.parse_expr();
-                    self.expect_token(T![CloseBrace]);
-                    path.push(PathSegment::Dynamic(Box::new(expr)))
-                }
-                T![Dot] => {
-                    self.tokens.pop_front();
-                    continue;
-                }
-                T![Colon] => {
-                    self.tokens.pop_front();
-                    break;
-                }
-                _ => self.error_unexpected_token(checkpoint),
-            }
-        }
-
-        let value = self.parse_expr();
-        AstStatement::DotAssignation {
-            path,
-            value: Box::new(value),
         }
     }
 
@@ -681,10 +571,11 @@ mod tests {
     fn test_simple_assignment() {
         let input = "app: 'rust'";
         let scope = create_scope(input);
+
         assert_eq!(
             scope,
             scope![stmt! {
-                @assign "app".to_owned().into(), expr!(@lit "rust".to_owned().into())
+                @assign [PathSegment::Static("app".to_owned().into())], expr!(@unboxed @lit "rust".to_owned().into())
             }]
         );
     }
@@ -696,7 +587,19 @@ mod tests {
         assert_eq!(
             scope,
             scope![stmt! {
-                @assign "app".to_owned().into(), expr!(@unquoted "rust".to_owned().into())
+                @assign [PathSegment::Static("app".to_owned().into())], expr!(@unboxed @unquoted "rust".to_owned().into())
+            }]
+        );
+    }
+
+    #[test]
+    fn test_simple_assignment_string() {
+        let input = "app: 'rust'";
+        let scope = create_scope(input);
+        assert_eq!(
+            scope,
+            scope![stmt! {
+                @assign [PathSegment::Static("app".to_owned().into())], expr!(@unboxed @lit "rust".to_owned().into())
             }]
         );
     }
@@ -708,7 +611,7 @@ mod tests {
         assert_eq!(
             scope,
             scope![stmt! {
-                @assign "version".to_owned().into(), expr!(@lit 1.into())
+                @assign [PathSegment::Static("version".to_owned().into())], expr!(@unboxed @lit 1.into())
             }]
         );
     }
@@ -720,7 +623,7 @@ mod tests {
         assert_eq!(
             scope,
             scope![stmt! {
-                @assign "version".to_owned().into(), expr!(@lit 123456.into())
+                @assign [PathSegment::Static("version".to_owned().into())], expr!(@unboxed @lit 123456.into())
             }]
         );
     }
@@ -739,7 +642,7 @@ mod tests {
         assert_eq!(
             scope,
             scope![stmt! {
-                @assign "app".to_owned().into(), expr!(@lit "rust".to_owned().into())
+                @assign [PathSegment::Static("app".to_owned().into())], expr!(@unboxed @lit "rust".to_owned().into())
             }]
         );
     }
@@ -751,8 +654,8 @@ mod tests {
         assert_eq!(
             scope,
             scope![stmt! {
-                @assign "items".to_owned().into(),
-                expr![@array
+                @assign [PathSegment::Static("items".to_owned().into())],
+                *expr![@array
                     expr![@unboxed @lit "apple".to_owned().into()],
                     expr![@unboxed @lit "banana".to_owned().into()],
                     expr![@unboxed @lit "cherry".to_owned().into()]
@@ -768,8 +671,8 @@ mod tests {
         assert_eq!(
             scope,
             scope![stmt! {
-                @assign "items".to_owned().into(),
-                expr![@array
+                @assign [PathSegment::Static("items".to_owned().into())],
+                *expr![@array
                     expr![@unboxed @unquoted "apple".to_owned().into()],
                     expr![@unboxed @lit "banana".to_owned().into()],
                     expr![@unboxed @lit "cherry".to_owned().into()],
@@ -787,8 +690,8 @@ mod tests {
         assert_eq!(
             scope,
             scope![stmt! {
-                @assign "items".to_owned().into(),
-                expr![@object
+                @assign [PathSegment::Static("items".to_owned().into())],
+                *expr![@object
                     "apple".to_owned() => expr![@unboxed @lit 1.into()],
                     "banana".to_owned() => expr![@unboxed @lit 2.into()],
                     "cherry".to_owned() => expr![@unboxed @lit 3.into()]
@@ -804,8 +707,8 @@ mod tests {
         assert_eq!(
             scope,
             scope![stmt! {
-                @assign "app".to_owned().into(),
-                expr![@object
+                @assign [PathSegment::Static("app".to_owned().into())],
+                *expr![@object
                     "name".to_owned() => expr![@unboxed @lit "My App".to_owned().into()],
                     "version".to_owned() => expr![@unboxed @lit 1.0.into()],
                     "authors".to_owned() => *expr![@array
@@ -823,8 +726,10 @@ mod tests {
         let scope = create_scope(input);
         assert_eq!(
             scope,
-            scope![stmt![@assign "port".to_owned().into(),
-                expr![@inter expr!(@unboxed @ident "APP_PORT".to_owned().into())].into()]]
+            scope![
+                stmt![@assign [PathSegment::Static("port".to_owned().into())],
+                expr![@inter expr!(@unboxed @ident "APP_PORT".to_owned().into())].into()]
+            ]
         )
     }
 
@@ -834,8 +739,10 @@ mod tests {
         let scope = create_scope(input);
         assert_eq!(
             scope,
-            scope![stmt![@assign "port".to_owned().into(),
-                expr!( @lit 83.into())]]
+            scope![
+                stmt![@assign [PathSegment::Static("port".to_owned().into())],
+                expr!(@unboxed @lit 83.into())]
+            ]
         )
     }
 
@@ -845,12 +752,14 @@ mod tests {
         let scope = create_scope(input);
         assert_eq!(
             scope,
-            scope![stmt![@assign "port".to_owned().into(),
+            scope![
+                stmt![@assign [PathSegment::Static("port".to_owned().into())],
                 expr![@inter expr!(
                     @cast expr!(@unboxed @ident "APP_PORT".to_owned().into()
                 ).into(),
                     "int".to_owned()
-                )].into()]]
+                )].into()]
+            ]
         )
     }
     #[test]
@@ -859,11 +768,13 @@ mod tests {
         let scope = create_scope(input);
         assert_eq!(
             scope,
-            scope![stmt![@assign "port".to_owned().into(),
+            scope![
+                stmt![@assign [PathSegment::Static("port".to_owned().into())],
                 expr![@inter
                     expr![
                     @bin expr!(@ident "APP_PORT".to_owned().into()), Or, expr!(@lit 8080.into()).into()
-                    ].into()].into()]]
+                    ].into()].into()]
+            ]
         )
     }
 
@@ -873,11 +784,18 @@ mod tests {
         let scope = create_scope(input);
         assert_eq!(
             scope,
-            scope![stmt![@assign "port".to_owned().into(),
-                expr![@inter
-                    expr![
-                    @bin expr!(@cast expr!(@ident "APP_PORT".to_owned()), "int".to_owned()).into(), Or, expr!(@lit 8080.into()).into()
-                    ].into()].into()]]
+            scope![
+                stmt![@assign [PathSegment::Static("port".to_owned().into())],
+                    expr![@inter
+                        expr![@bin
+                            expr!(@cast
+                                expr!(@ident "APP_PORT".to_owned()), "int".to_owned()).into(),
+                                Or, expr!(@lit 8080.into()
+                            ).into()
+                        ].into()
+                    ].into()
+                ]
+            ]
         )
     }
 
@@ -888,8 +806,6 @@ mod tests {
         _ = create_scope(input);
     }
 
-    // TODO Fix the dot assignation because actually returns an error.
-    #[ignore]
     #[test]
     fn test_dot_assignation() {
         let input = "app.author: 'roman'";
@@ -897,13 +813,31 @@ mod tests {
 
         assert_eq!(
             scope,
-            scope![stmt! {
-                @dot vec![
-                    PathSegment::Static("app".to_owned()),
-                    PathSegment::Static("author".to_owned()),
+            scope![stmt! [
+                @assign [
+                    PathSegment::Static("app".to_owned().into()),
+                    PathSegment::Static("author".to_owned().into())
                 ],
                 expr!(@unboxed @lit "roman".to_owned().into())
-            }]
+            ]]
+        )
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_invalid_dot_assignation() {
+        let input = "app..author: 'roman'";
+        let scope = create_scope(input);
+
+        assert_eq!(
+            scope,
+            scope![stmt! [
+                @assign [
+                    PathSegment::Static("app".to_owned().into()),
+                    PathSegment::Static("author".to_owned().into())
+                ],
+                expr!(@unboxed @lit "roman".to_owned().into())
+            ]]
         )
     }
 }

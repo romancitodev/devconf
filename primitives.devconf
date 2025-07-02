@@ -18,3 +18,9 @@ config: {
 }
 
 bar: { rock: roll, never: "gonna give you up" }
+
+os.user: romandev
+
+@template make_an_user(user):
+   # The ${user} expression must be valid only in this context
+   os.${user}: true

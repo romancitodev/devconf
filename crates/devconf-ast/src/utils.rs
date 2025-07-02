@@ -28,8 +28,11 @@ macro_rules! unary_op {
 
 #[macro_export]
 macro_rules! stmt {
-    (@assign $name:expr, $value:expr) => {
-        $crate::nodes::AstStatement::Assignation($name, $value)
+    (@assign [$($name:expr),*], $value:expr) => {
+        $crate::nodes::AstStatement::Assignation {
+            path: vec![$($name),*],
+            value: Box::new($value)
+        }
     };
     (@expr $expr:expr) => {
         $crate::nodes::AstStatement::Expression(Box::new($expr))
@@ -39,12 +42,6 @@ macro_rules! stmt {
             test: $test,
             body: $body,
             otherwise: $otherwise,
-        }
-    };
-    (@dot $path:expr, $value:expr) => {
-        $crate::nodes::AstStatement::DotAssignation {
-            path: $path,
-            value: Box::new($value),
         }
     };
 }
