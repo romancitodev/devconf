@@ -19,6 +19,7 @@ pub enum Type {
 
 pub enum Context {
     Expression, // on ${}
+    If,         // If I'm inside an if expression.
     Value,      // this wouldn't be possible.
 }
 
