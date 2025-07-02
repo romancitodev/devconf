@@ -7,7 +7,9 @@ edition = "2024"
 members = [
   "crates/devconf-lexer",
   "crates/devconf-ast",
-  "crates/devconf-runtime", "crates/devconf-tychecker",
+  "crates/devconf-runtime",
+  "crates/devconf-tychecker",
+  "crates/devconf-nodes",
 ]
 resolver = "2"
 

@@ -1,7 +1,7 @@
 use std::{collections::HashMap, fmt};
 
-use devconf_ast::nodes::{AstBinaryOp, AstExpr, AstUnaryOp};
 use devconf_lexer::token::Literal;
+use devconf_nodes::ast::{AstBinaryOp, AstExpr, AstUnaryOp};
 
 // These types are the known for the type checker
 #[derive(Debug, PartialEq, Clone)]
@@ -51,6 +51,7 @@ impl fmt::Display for Type {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct TypeChecker;
 
 impl TypeChecker {
@@ -109,7 +110,7 @@ impl TypeChecker {
                 }
                 _ => {
                     let _inner_type = self.infer_type(expr)?;
-                    Ok(Type::String)
+                    Ok(_inner_type)
                 }
             },
             AstExpr::Cast { expr, ty } => {

@@ -1,0 +1,7 @@
+[package]
+name = "devconf-nodes"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+devconf-lexer.path = "../devconf-lexer"

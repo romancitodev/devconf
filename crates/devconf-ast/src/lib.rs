@@ -11,17 +11,25 @@ pub use config::DevConf;
 use devconf_lexer::lit;
 use devconf_lexer::token::{Literal, SpannedToken};
 use devconf_lexer::{T, kw, token::Token};
+
+use devconf_tychecker::{Context, TypeChecker};
+
 pub use property::Property;
 pub use value::Value;
 
-use crate::nodes::{AstBinaryOp, AstExpr, AstStatement, AstUnaryOp, PathSegment};
+use crate::nodes::{AstStatement, PathSegment};
 use crate::source::SourceAst;
+use devconf_nodes::ast::*;
 
 pub use nodes::AstScope;
 
 impl AstScope {
     pub fn from_tokens(base: &str, tokens: VecDeque<SpannedToken>) -> Self {
         SourceAst::new(base, tokens).parse_scope(0)
+    }
+
+    pub fn from_tokens_typed(base: &str, tokens: VecDeque<SpannedToken>) -> Self {
+        SourceAst::new(base, tokens).parse_scope_checked(0)
     }
 }
 
@@ -33,6 +41,23 @@ impl SourceAst<'_> {
                 break;
             }
             let stmt = self.parse_statement(ident);
+            if let AstStatement::Comment = stmt {
+                continue;
+            }
+            nodes.push(stmt);
+            println!("{nodes:#?}");
+        }
+        AstScope(nodes)
+    }
+
+    pub(crate) fn parse_scope_checked(&mut self, ident: usize) -> AstScope {
+        let mut nodes: Vec<AstStatement> = vec![];
+        let mut checker = TypeChecker;
+        loop {
+            if !self.parse_pre_statement(ident) {
+                break;
+            }
+            let stmt = self.parse_statement_with_type_checking(ident, &mut checker);
             if let AstStatement::Comment = stmt {
                 continue;
             }
@@ -101,11 +126,46 @@ impl SourceAst<'_> {
             .inspect(|_| *self = peek)
     }
 
+    fn parse_statement_with_type_checking(
+        &mut self,
+        level: usize,
+        checker: &mut TypeChecker,
+    ) -> AstStatement {
+        let stmt = self.parse_statement(level);
+        match &stmt {
+            ast @ AstStatement::Assignation { path, value } => {
+                if let Err(_) = checker.check_expr(value, Context::Value) {
+                    panic!("Type error bro...");
+                }
+
+                for segment in path {
+                    match segment {
+                        PathSegment::Static(_) => {} // Always valid...
+                        PathSegment::Dynamic(ast_expr) => {
+                            _ = checker.check_expr(ast_expr, Context::Expression);
+                        }
+                    };
+                }
+                ast.clone()
+            }
+            ast @ AstStatement::Expression(ast_expr) => {
+                _ = checker.check_expr(ast_expr, Context::Expression);
+                ast.clone()
+            }
+            // AstStatement::Conditional {
+            //     test,
+            //     body,
+            //     otherwise,
+            // } => todo!(),
+            _ => todo!(),
+        }
+    }
+
     fn parse_statement(&mut self, level: usize) -> AstStatement {
         let mut checkpoint = self.clone();
         let first = self.peek_expect();
 
-        println!("parse_statement: token = {:?}", first);
+        println!("parse_statement: token = {:#?}", first);
 
         match **first {
             Token::Comment(_) => AstStatement::Comment,
@@ -141,7 +201,22 @@ impl SourceAst<'_> {
                         T![Dot] => {
                             self.error_at(span, "You can't have consecutive dots");
                         }
-                        _ => unimplemented!(),
+                        T![Dollar] => {
+                            potencial_token.recover();
+                            let expr = checkpoint.parse_interpolation();
+                            let ty = self.checker.check_expr(&expr, Context::Expression);
+                            if let Err(e) = ty {
+                                self.error_at(span, e);
+                            }
+                            segments.push(PathSegment::Dynamic(expr.into()));
+                        }
+                        _ => {
+                            let token = potencial_token.accept();
+                            self.error_at(
+                                token.span,
+                                format!("Unexpected token on parse_statement: {:?}", token.token),
+                            );
+                        }
                     }
                 }
 
@@ -428,6 +503,7 @@ impl SourceAst<'_> {
     }
 
     fn parse_interpolation(&mut self) -> AstExpr {
+        println!("in interpolation: {:#?}", self);
         let mut peek = self.clone();
         peek.expect_token(T![Dollar]);
         peek.expect_token(T![OpenBrace]);
@@ -547,6 +623,10 @@ mod tests {
         AstScope::from_tokens(content, Lexer::from_str(content).unwrap())
     }
 
+    fn create_scope_typed(content: &str) -> AstScope {
+        AstScope::from_tokens_typed(content, Lexer::from_str(content).unwrap())
+    }
+
     #[test]
     fn test_simple_string() {
         let input = "\"Hello, world!\"";
@@ -567,6 +647,19 @@ mod tests {
     fn test_simple_assignment() {
         let input = "app: 'rust'";
         let scope = create_scope(input);
+
+        assert_eq!(
+            scope,
+            scope![stmt! {
+                @assign [PathSegment::Static("app".to_owned().into())], expr!(@unboxed @lit "rust".to_owned().into())
+            }]
+        );
+    }
+
+    #[test]
+    fn test_simple_assignment_typed() {
+        let input = "app: 'rust'";
+        let scope = create_scope_typed(input);
 
         assert_eq!(
             scope,
@@ -819,7 +912,7 @@ mod tests {
         )
     }
 
-    #[ignore = "unimplemented!()"]
+    // #[ignore = "unimplemented!()"]
     #[test]
     fn test_dot_assignation_with_interpolation() {
         let input = "app.${author}: 'roman'";
@@ -830,11 +923,25 @@ mod tests {
             scope![stmt! [
                 @assign [
                     PathSegment::Static("app".to_owned().into()),
-                    PathSegment::Static("author".to_owned().into())
+                    PathSegment::Dynamic(expr!(@inter expr!(@unboxed @ident "author".to_owned().into())).into())
                 ],
                 expr!(@unboxed @lit "roman".to_owned().into())
             ]]
         )
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_invalid_dot_assignation_with_interpolation() {
+        let input = "app.${42}: 'roman'";
+        let _ = create_scope(input);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_invalid_dot_type_hinting_on_interpolation() {
+        let input = "app.${42:str}: 'roman'";
+        let _ = create_scope(input);
     }
 
     #[test]

@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
     use crate::checker::*;
-    use devconf_ast::nodes::*;
     use devconf_lexer::token::Literal;
+    use devconf_nodes::ast::*;
 
     fn create_checker() -> TypeChecker {
         TypeChecker

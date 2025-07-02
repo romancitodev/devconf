@@ -18,6 +18,8 @@ version = "0.1.0"
 dependencies = [
  "ariadne",
  "devconf-lexer",
+ "devconf-nodes",
+ "devconf-tychecker",
 ]
 
 [[package]]
@@ -26,6 +28,13 @@ version = "0.1.0"
 dependencies = [
  "ariadne",
  "winnow",
+]
+
+[[package]]
+name = "devconf-nodes"
+version = "0.1.0"
+dependencies = [
+ "devconf-lexer",
 ]
 
 [[package]]
@@ -44,8 +53,8 @@ version = "0.1.0"
 name = "devconf-tychecker"
 version = "0.1.0"
 dependencies = [
- "devconf-ast",
  "devconf-lexer",
+ "devconf-nodes",
 ]
 
 [[package]]

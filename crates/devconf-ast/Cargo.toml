@@ -5,4 +5,6 @@ edition = "2024"
 
 [dependencies]
 devconf-lexer.path = "../devconf-lexer"
+devconf-nodes.path = "../devconf-nodes"
+devconf-tychecker.path = "../devconf-tychecker"
 ariadne.workspace = true

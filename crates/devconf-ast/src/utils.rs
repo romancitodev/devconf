@@ -8,7 +8,7 @@ macro_rules! scope {
 #[macro_export]
 macro_rules! bin_op {
     ($a:expr, $op:ident, $b:expr) => {
-        $crate::nodes::AstExpr::BinaryOp {
+        devconf_nodes::ast::AstExpr::BinaryOp {
             op: $crate::nodes::AstBinaryOp::$op,
             left: $a.into(),
             right: $b.into(),
@@ -19,7 +19,7 @@ macro_rules! bin_op {
 #[macro_export]
 macro_rules! unary_op {
     ($op:ident, $b:expr) => {
-        $crate::nodes::AstExpr::UnaryOp {
+        devconf_nodes::ast::AstExpr::UnaryOp {
             op: $crate::nodes::AstUnaryOp::$op,
             right: $b.into(),
         }
@@ -49,47 +49,47 @@ macro_rules! stmt {
 #[macro_export]
 macro_rules! expr {
     (@lit $expr:expr) => {
-        Box::new($crate::nodes::AstExpr::Literal($expr))
+        Box::new(devconf_nodes::ast::AstExpr::Literal($expr))
     };
     (@unboxed @lit $expr:expr) => {
-        $crate::nodes::AstExpr::Literal($expr)
+        devconf_nodes::ast::AstExpr::Literal($expr)
     };
     (@ident $expr:expr) => {
-        Box::new($crate::nodes::AstExpr::Ident($expr))
+        Box::new(devconf_nodes::ast::AstExpr::Ident($expr))
     };
     (@unboxed @ident $expr:expr) => {
-        $crate::nodes::AstExpr::Ident($expr)
+        devconf_nodes::ast::AstExpr::Ident($expr)
     };
     (@unquoted $expr:expr) => {
-        Box::new($crate::nodes::AstExpr::Literal(
+        Box::new(devconf_nodes::ast::AstExpr::Literal(
             devconf_lexer::token::Literal::UnquotedString($expr),
         ))
     };
     (@unboxed @unquoted $expr:expr) => {
-        $crate::nodes::AstExpr::Literal(
+        devconf_nodes::ast::AstExpr::Literal(
             devconf_lexer::token::Literal::UnquotedString($expr),
         )
     };
     (@array $($expr:expr),*) => {
-        Box::new($crate::nodes::AstExpr::Array(vec![$($expr),*]))
+        Box::new(devconf_nodes::ast::AstExpr::Array(vec![$($expr),*]))
     };
     (@object $($key:expr => $value:expr),*) => {
-        Box::new($crate::nodes::AstExpr::Object(vec![$(($key, $value)),*]))
+        Box::new(devconf_nodes::ast::AstExpr::Object(vec![$(($key, $value)),*]))
     };
     (@inter $expr:expr) => {
-        $crate::nodes::AstExpr::Interpolation {
+        devconf_nodes::ast::AstExpr::Interpolation {
             expr: Box::new($expr),
         }
     };
     (@cast $expr:expr, $cast:expr) => {
-        $crate::nodes::AstExpr::Cast {
+        devconf_nodes::ast::AstExpr::Cast {
             expr: $expr,
             ty: $cast
         }
     };
     (@bin $left:expr, $op:ident, $right:expr) => {
-        $crate::nodes::AstExpr::BinaryExpr {
-            op: $crate::nodes::AstBinaryOp::$op,
+        devconf_nodes::ast::AstExpr::BinaryExpr {
+            op: devconf_nodes::ast::AstBinaryOp::$op,
             left: $left,
             right: $right
         }

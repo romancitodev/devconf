@@ -5,12 +5,14 @@ use std::ops;
 use ariadne::{Color, Label, Report, ReportBuilder, ReportKind, Source};
 
 use devconf_lexer::token::{Span, SpannedToken, Token};
+use devconf_tychecker::TypeChecker;
 
 #[derive(Clone, Debug)]
 pub struct SourceAst<'i> {
     pub base: &'i str,
     pub last_offset: usize,
     pub tokens: VecDeque<SpannedToken>,
+    pub checker: TypeChecker,
 }
 
 #[derive(Debug)]
@@ -26,6 +28,7 @@ impl<'i> SourceAst<'i> {
             base,
             tokens,
             last_offset: 0,
+            checker: TypeChecker,
         }
     }
 
@@ -34,6 +37,7 @@ impl<'i> SourceAst<'i> {
             tokens,
             base: self.base,
             last_offset: self.last_offset,
+            checker: TypeChecker,
         }
     }
 

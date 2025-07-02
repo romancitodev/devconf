@@ -4,5 +4,5 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-devconf-ast.path = "../devconf-ast"
 devconf-lexer.path = "../devconf-lexer"
+devconf-nodes.path = "../devconf-nodes"
