@@ -786,8 +786,8 @@ mod tests {
                         expr![@bin
                             expr!(@cast
                                 expr!(@ident "APP_PORT".to_owned()), "int".to_owned()).into(),
-                                Or, expr!(@lit 8080.into()
-                            ).into()
+                                Or,
+                                expr!(@lit 8080.into()).into()
                         ].into()
                     ].into()
                 ]
@@ -805,6 +805,24 @@ mod tests {
     #[test]
     fn test_dot_assignation() {
         let input = "app.author: 'roman'";
+        let scope = create_scope(input);
+
+        assert_eq!(
+            scope,
+            scope![stmt! [
+                @assign [
+                    PathSegment::Static("app".to_owned().into()),
+                    PathSegment::Static("author".to_owned().into())
+                ],
+                expr!(@unboxed @lit "roman".to_owned().into())
+            ]]
+        )
+    }
+
+    #[ignore = "unimplemented!()"]
+    #[test]
+    fn test_dot_assignation_with_interpolation() {
+        let input = "app.${author}: 'roman'";
         let scope = create_scope(input);
 
         assert_eq!(
