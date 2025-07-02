@@ -84,13 +84,36 @@ impl Lexer {
             return Ok(true);
         }
 
-        if parsed_char == '.' {
-            if let Some(next) = input.peek_slice(2).chars().last() {
-                if next.is_numeric() {
-                    Self::token_number(tokens, input)?;
-                    return Ok(true);
-                }
-            }
+        if parsed_char == '.'
+            && let Some(next) = input.peek_slice(2).chars().last()
+            && next.is_numeric()
+        {
+            // because of dot assignation, maybe we found stuff like foo.42, who is invalid
+            // so we need to check before numeric parsing, if before we found an identifier. to just set it as a integer.
+            _ = tokens
+                .iter()
+                .rev()
+                .take(2)
+                .any(|token| matches!(token.token, Token::Ident(_)))
+                .then(|| {
+                    // we just consume the identifier so the next token is parsed as a integer instead of a float.
+                    // anyway, on the `ast` we catch this to return it as invalid, but this is just a workaround because
+                    // the behaviour of parsing a float just because we saw a dot before.
+                    let (_, span) = any::<_, ()>
+                        .with_span()
+                        .map(IntoSpan::into_span)
+                        .parse_next(input)
+                        .unwrap_or_else(|()| {
+                            input.error(format!("unexpected char: {parsed_char:#?}"))
+                        });
+                    tokens.push_back(SpannedToken {
+                        span,
+                        token: token::Token::Punctuation(Punctuation::Dot), // we not that is a dot because of `parsed_char``
+                    });
+                });
+
+            Self::token_number(tokens, input)?;
+            return Ok(true);
         }
 
         if parsed_char == '\r' {
@@ -128,12 +151,10 @@ impl Lexer {
 
         if token == Punctuation::Dot
             && let Some(next) = peek(any::<_, ()>).parse_next(input).ok()
+            && next.is_numeric()
         {
-            if next.is_numeric() {
-                println!("{next} - {token:?}");
-                Self::token_number(tokens, input)?;
-                return Ok(true);
-            }
+            Self::token_number(tokens, input)?;
+            return Ok(true);
         }
 
         if token != Punctuation::Newline && token != Punctuation::Identation {
@@ -508,6 +529,56 @@ mod tests {
             Vec::from(tokens),
             &[T!(Dollar), T!(OpenBrace), ident!("FOO"), T!(CloseBrace)]
         );
+    }
+
+    #[test]
+    fn test_invalid_nested_dot_assignation() {
+        let input = "hello..world: true";
+        let lexer = Lexer::from_str(input);
+        assert!(lexer.is_ok());
+        let tokens = lexer.unwrap();
+        assert_eq!(
+            Vec::from(tokens),
+            &[
+                ident!("hello"),
+                T![Dot],
+                T![Dot],
+                ident!("world"),
+                T![Colon],
+                lit!(true)
+            ]
+        )
+    }
+
+    #[test]
+    fn test_invalid_nested_dots_with_integers() {
+        let input = "hello.42: true";
+        let lexer = Lexer::from_str(input);
+        assert!(lexer.is_ok());
+        let tokens = lexer.unwrap();
+        assert_eq!(
+            Vec::from(tokens),
+            &[ident!("hello"), T![Dot], lit!(42), T![Colon], lit!(true)]
+        )
+    }
+
+    #[test]
+    fn test_invalid_nested_dot_assignation_with_numbers() {
+        let input = "hello..42: true";
+        let lexer = Lexer::from_str(input);
+        assert!(lexer.is_ok());
+        let tokens = lexer.unwrap();
+        assert_eq!(
+            Vec::from(tokens),
+            &[
+                ident!("hello"),
+                T![Dot],
+                T![Dot],
+                lit!(42),
+                T![Colon],
+                lit!(true)
+            ]
+        )
     }
 
     #[test]

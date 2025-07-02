@@ -165,15 +165,15 @@ app: {
 - [x] Comment support
 - [x] Array and object parsing
 - [x] Environment variable interpolation
-- [ ] Dot notation (in progress)
+- [x] Dot notation
+- [ ] Conditional expressions (in progress)
 - [ ] Template system (planned)
-- [ ] Conditional expressions (planned)
 
 ## 🚧 Roadmap
 
 - [ ] Complete dot notation support
-- [ ] Template system implementation
 - [ ] Conditional logic (`@if` statements)
+- [ ] Template system implementation
 - [ ] Expression evaluation
 - [ ] CLI tool for validation and conversion
 - [ ] IDE extensions (VS Code, Vim, etc.)

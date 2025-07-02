@@ -123,10 +123,13 @@ impl SourceAst<'_> {
 
                     println!("Assigning to: {:?}", segments);
 
+                    println!("Found potential token: {:?}", potencial_token);
+
                     match **potencial_token {
                         Token::Literal(ref literal) => match literal {
                             Literal::UnquotedString(id) | Literal::String(id) => {
                                 segments.push(PathSegment::Static(id.clone()));
+                                dot_before = false;
                             }
                             _ => self.error_at(
                                 span,
@@ -135,6 +138,7 @@ impl SourceAst<'_> {
                         },
                         Token::Ident(ref id) => {
                             segments.push(PathSegment::Static(id.clone()));
+                            dot_before = false;
                         }
                         T![Dot] if !dot_before => {
                             dot_before = true;
@@ -824,8 +828,50 @@ mod tests {
     }
 
     #[test]
+    fn test_dot_assignation_with_literals() {
+        let input = "app.'author': 'roman'";
+        let scope = create_scope(input);
+
+        assert_eq!(
+            scope,
+            scope![stmt! [
+                @assign [
+                    PathSegment::Static("app".to_owned().into()),
+                    PathSegment::Static("author".to_owned().into())
+                ],
+                expr!(@unboxed @lit "roman".to_owned().into())
+            ]]
+        )
+    }
+
+    #[test]
+    #[should_panic = "Seems to be an invalid token (Integer(42))"]
+    fn test_invalid_dot_assignation_with_literals() {
+        let input = "app.42: 'roman'";
+        let _ = create_scope(input);
+    }
+
+    #[test]
+    fn test_dot_assignation_with_nested_fields() {
+        let input = "app.user.enabled: true";
+        let scope = create_scope(input);
+
+        assert_eq!(
+            scope,
+            scope![stmt! [
+                @assign [
+                    PathSegment::Static("app".to_owned().into()),
+                    PathSegment::Static("user".to_owned().into()),
+                    PathSegment::Static("enabled".to_owned().into())
+                ],
+                expr!(@unboxed @lit true.into())
+            ]]
+        )
+    }
+
+    #[test]
     #[should_panic]
-    fn test_invalid_dot_assignation() {
+    fn test_invalid_dot_assignation_with_dots() {
         let input = "app..author: 'roman'";
         let scope = create_scope(input);
 
