@@ -118,13 +118,7 @@ impl SourceAst<'_> {
                     if *potencial_token == T![Colon] {
                         break;
                     }
-
                     let span = potencial_token.span;
-
-                    println!("Assigning to: {:?}", segments);
-
-                    println!("Found potential token: {:?}", potencial_token);
-
                     match **potencial_token {
                         Token::Literal(ref literal) => match literal {
                             Literal::UnquotedString(id) | Literal::String(id) => {
@@ -168,8 +162,6 @@ impl SourceAst<'_> {
                 checkpoint.parse_if_stmt(level)
             }
             T![Bang] | Token::Literal(_) => {
-                first.recover();
-                println!("literal detected");
                 AstStatement::Expression(checkpoint.parse_expr().into())
             }
             _ => {

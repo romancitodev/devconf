@@ -141,9 +141,11 @@ impl<'i> SourceAst<'i> {
         fun: impl FnOnce(ReportBuilder<Span>) -> ReportBuilder<Span>,
         msg: impl fmt::Display,
     ) -> ! {
-        _ = fun(Report::build(ReportKind::Error, span))
-            .finish()
-            .eprint(Source::from(self.base));
+        if !cfg!(test) {
+            _ = fun(Report::build(ReportKind::Error, span))
+                .finish()
+                .print(Source::from(self.base));
+        }
 
         panic!("{msg}");
     }
