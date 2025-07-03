@@ -1,5 +1,5 @@
 use core::fmt;
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::ops;
 
 use ariadne::{Color, Label, Report, ReportBuilder, ReportKind, Source};
@@ -7,12 +7,15 @@ use ariadne::{Color, Label, Report, ReportBuilder, ReportKind, Source};
 use devconf_lexer::token::{Span, SpannedToken, Token};
 use devconf_tychecker::TypeChecker;
 
+use crate::nodes::MacroDefinition;
+
 #[derive(Clone, Debug)]
 pub struct SourceAst<'i> {
     pub base: &'i str,
     pub last_offset: usize,
     pub tokens: VecDeque<SpannedToken>,
     pub checker: TypeChecker,
+    pub macros: HashMap<String, MacroDefinition>, // we have the `MacroDefinition there`
 }
 
 #[derive(Debug)]
@@ -29,6 +32,7 @@ impl<'i> SourceAst<'i> {
             tokens,
             last_offset: 0,
             checker: TypeChecker,
+            macros: Default::default(),
         }
     }
 
@@ -38,6 +42,7 @@ impl<'i> SourceAst<'i> {
             base: self.base,
             last_offset: self.last_offset,
             checker: TypeChecker,
+            macros: Default::default(),
         }
     }
 
@@ -117,9 +122,16 @@ impl<'i> SourceAst<'i> {
     }
 
     pub fn error_in_place(&self, msg: impl fmt::Display + Clone) -> ! {
+        let span = Span::char(self.last_offset - 1);
         self.error_build(
-            Span::char(self.last_offset),
-            |b| b.with_message(&msg),
+            span.clone(),
+            |b| {
+                b.with_message(msg.clone()).with_label(
+                    Label::new(span)
+                        .with_message(msg.clone())
+                        .with_color(ariadne::Color::BrightRed),
+                )
+            },
             msg.clone(),
         )
     }
@@ -148,7 +160,7 @@ impl<'i> SourceAst<'i> {
         if !cfg!(test) {
             _ = fun(Report::build(ReportKind::Error, span))
                 .finish()
-                .print(Source::from(self.base));
+                .eprint(Source::from(self.base));
         }
 
         panic!("{msg}");

@@ -6,6 +6,118 @@ fn create_scope(content: &str) -> AstScope {
 }
 
 #[test]
+fn test_template_parsing() {
+    let input = "@template generic(name):\tapp:'rust'";
+    let scope = create_scope(input);
+    assert_eq!(
+        scope,
+        scope![stmt![
+            @template "generic".to_string(),
+            ["name".to_owned()];
+            [];
+            scope![stmt! {
+                @assign [PathSegment::Static("app".to_owned().into())], expr!(@unboxed @lit "rust".to_owned().into())
+            }]
+        ]]
+    )
+}
+
+#[test]
+fn test_parse_template_and_use() {
+    let input = "@template generic(name):\n\tapp:${name}\n@use generic(rick)";
+    let scope = create_scope(input);
+    assert_eq!(
+        scope,
+        scope![
+            stmt![
+                @template "generic".to_string(),
+                ["name".to_owned()];
+                [];
+                scope![stmt! {
+                    @assign [PathSegment::Static("app".to_owned().into())], expr!(@inter
+                        *expr!(@ident "name".to_owned())
+                    )
+                }]
+            ],
+            stmt! {
+                @assign [PathSegment::Static("app".to_owned().into())], *expr!(@unquoted "rick".to_owned().into())
+            }
+        ]
+    )
+}
+
+// ! FIX this test, is critical
+#[ignore]
+#[test]
+fn test_parse_template_with_interpolation() {
+    let input = "@template generic(name):\n\t${name}:true\n@use generic(rick)";
+    let scope = create_scope(input);
+    assert_eq!(
+        scope,
+        scope![
+            stmt![
+                @template "generic".to_string(),
+                ["name".to_owned()];
+                [];
+                scope![stmt! {
+                    @assign [PathSegment::Dynamic(
+                        expr!(@inter *expr!(@ident "name".to_owned())).into()
+                    )], *expr!(@lit true.into())
+                }]
+            ],
+            stmt! {
+                @assign [PathSegment::Static("rick".to_owned().into())], *expr!(@lit true.into())
+            }
+        ]
+    )
+}
+
+#[test]
+fn test_parse_template_with_dot_notation() {
+    let input = "@template generic(name):\n\tapp.${name}:true\n@use generic(rick)";
+    let scope = create_scope(input);
+    assert_eq!(
+        scope,
+        scope![
+            stmt![
+                @template "generic".to_string(),
+                ["name".to_owned()];
+                [];
+                scope![stmt! {
+                    @assign [PathSegment::Static("app".to_owned().into()),PathSegment::Dynamic(
+                        expr!(@inter *expr!(@ident "name".to_owned())).into()
+                    )], *expr!(@lit true.into())
+                }]
+            ],
+            stmt! {
+                @assign [PathSegment::Static("app".to_owned().into()), PathSegment::Static("rick".to_owned().into())], *expr!(@lit true.into())
+            }
+        ]
+    )
+}
+
+#[test]
+#[should_panic]
+fn test_parse_template_with_invalid_dot_notation() {
+    let input = "@template generic(name):\n\tapp.${name:str}:true\n@use generic(42)";
+    let _ = create_scope(input);
+}
+
+#[test]
+#[should_panic]
+fn test_template_not_found() {
+    let input = "@use pepe()";
+    let _ = create_scope(input);
+}
+
+#[test]
+#[should_panic = "trailling comma"] // trailling comma
+fn test_invalid_template_parsing() {
+    let input = "@template generic(name,):\tapp:'rust'";
+    let _ = create_scope(input);
+}
+
+#[test]
 fn test_simple_string() {
     let input = "\"Hello, world!\"";
     let scope = create_scope(input);

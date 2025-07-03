@@ -9,6 +9,33 @@ pub enum PathSegment {
     Dynamic(Box<AstExpr>),
 }
 
+#[derive(Debug, Clone)]
+pub struct MacroDefinition {
+    pub params: Vec<String>,
+    pub defaults: Vec<(String, AstExpr)>,
+    pub body: AstScope,
+}
+
+impl Into<MacroDefinition> for AstStatement {
+    fn into(self) -> MacroDefinition {
+        if let Self::TemplateDefinition {
+            params,
+            defaults,
+            body,
+            ..
+        } = self
+        {
+            MacroDefinition {
+                params,
+                defaults,
+                body,
+            }
+        } else {
+            panic!("Unvalid cast.")
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum AstStatement {
     Comment,

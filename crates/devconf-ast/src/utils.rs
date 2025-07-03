@@ -34,6 +34,14 @@ macro_rules! stmt {
             value: Box::new($value)
         }
     };
+    (@template $name:expr, [$($params:expr),*]; [$($param:expr => $default:expr),*]; $body:expr) => {
+        $crate::nodes::AstStatement::TemplateDefinition {
+            name: $name,
+            params: Vec::from([$($params),*]),
+            defaults: vec![$(($param, $default)),*],
+            body: $body
+        }
+    };
     (@expr $expr:expr) => {
         $crate::nodes::AstStatement::Expression(Box::new($expr))
     };
