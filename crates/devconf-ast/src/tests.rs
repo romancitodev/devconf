@@ -46,8 +46,6 @@ fn test_parse_template_and_use() {
     )
 }
 
-// ! FIX this test, is critical
-#[ignore]
 #[test]
 fn test_parse_template_with_interpolation() {
     let input = "@template generic(name):\n\t${name}:true\n@use generic(rick)";

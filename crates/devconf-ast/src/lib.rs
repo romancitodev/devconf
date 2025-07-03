@@ -287,67 +287,133 @@ impl SourceAst<'_> {
 
         match **first {
             Token::Comment(_) => AstStatement::Comment,
-            Token::Ident(_) => {
-                let mut segments = vec![]; // this will be the segments for the dot access.
-                first.recover();
+            Token::Ident(_) | T![Dollar] => {
+                // let mut segments = vec![]; // this will be the segments for the dot access.
+                // first.recover();
+                // let mut dot_before = false;
+                // while let Some(potencial_token) = checkpoint.peek() {
+                //     if *potencial_token == T![Colon] {
+                //         break;
+                //     }
+                //     let span = potencial_token.span;
+                //     match **potencial_token {
+                //         Token::Literal(ref literal) => match literal {
+                //             Literal::UnquotedString(id) | Literal::String(id) => {
+                //                 segments.push(PathSegment::Static(id.clone()));
+                //                 dot_before = false;
+                //             }
+                //             _ => self.error_at(
+                //                 span,
+                //                 format!("Seems to be an invalid token ({:?})", literal),
+                //             ),
+                //         },
+                //         Token::Ident(ref id) => {
+                //             segments.push(PathSegment::Static(id.clone()));
+                //             dot_before = false;
+                //         }
+                //         T![Dot] if !dot_before => {
+                //             dot_before = true;
+                //             continue;
+                //         }
+                //         T![Dot] => {
+                //             self.error_at(span, "You can't have consecutive dots");
+                //         }
+                //         T![Dollar] => {
+                //             potencial_token.recover();
+                //             let expr = checkpoint.parse_interpolation();
+                //             let ty = self.checker.check_expr(&expr, Context::Expression);
+                //             if let Err(e) = ty {
+                //                 self.error_at(span, e);
+                //             }
+                //             segments.push(PathSegment::Dynamic(expr.into()));
+                //         }
+                //         _ => {
+                //             let token = potencial_token.accept();
+                //             self.error_at(
+                //                 token.span,
+                //                 format!("Unexpected token on parse_statement: {:?}", token.token),
+                //             );
+                //         }
+                //     }
+                // }
 
-                let mut dot_before = false;
-                while let Some(potencial_token) = checkpoint.peek() {
-                    if *potencial_token == T![Colon] {
-                        break;
-                    }
-                    let span = potencial_token.span;
-                    match **potencial_token {
-                        Token::Literal(ref literal) => match literal {
-                            Literal::UnquotedString(id) | Literal::String(id) => {
-                                segments.push(PathSegment::Static(id.clone()));
-                                dot_before = false;
-                            }
-                            _ => self.error_at(
-                                span,
-                                format!("Seems to be an invalid token ({:?})", literal),
-                            ),
-                        },
-                        Token::Ident(ref id) => {
-                            segments.push(PathSegment::Static(id.clone()));
-                            dot_before = false;
+                // *self = checkpoint;
+
+                // let expr = match self.parse_expr() {
+                //     AstExpr::Ident(id) => AstExpr::Literal(Literal::UnquotedString(id)),
+                //     e => e,
+                // };
+
+                // AstStatement::Assignation {
+                //     path: segments,
+                //     value: Box::new(expr.into()),
+                // }
+
+                let mut nodes = vec![];
+                first.recover();
+                let mut seen_dot = false;
+                while let Some(token) = checkpoint.peek() {
+                    let span = token.span;
+                    let node = match (**token).clone() {
+                        T![Colon] => break,
+                        Token::Literal(literal) => {
+                            if !matches!(literal, Literal::String(_) | Literal::UnquotedString(_)) {
+                                self.error_at(
+                                    span,
+                                    format!("Seems to be an invalid token ({:?})", literal),
+                                );
+                            };
+                            seen_dot = false;
+                            AstExpr::Literal(literal.clone())
                         }
-                        T![Dot] if !dot_before => {
-                            dot_before = true;
-                            continue;
-                        }
-                        T![Dot] => {
-                            self.error_at(span, "You can't have consecutive dots");
+                        Token::Ident(id) => {
+                            seen_dot = false;
+                            AstExpr::Ident(id.clone())
                         }
                         T![Dollar] => {
-                            potencial_token.recover();
+                            token.recover();
                             let expr = checkpoint.parse_interpolation();
                             let ty = self.checker.check_expr(&expr, Context::Expression);
                             if let Err(e) = ty {
-                                self.error_at(span, e);
+                                self.error_in_place(e);
                             }
-                            segments.push(PathSegment::Dynamic(expr.into()));
+                            seen_dot = false;
+                            expr
                         }
-                        _ => {
-                            let token = potencial_token.accept();
-                            self.error_at(
-                                token.span,
-                                format!("Unexpected token on parse_statement: {:?}", token.token),
-                            );
+                        T![Dot] if seen_dot => {
+                            self.error_at(span, "You can't have consecutive commas");
                         }
-                    }
+                        T![Dot] => {
+                            seen_dot = true;
+                            continue;
+                        }
+                        _ => panic!(),
+                    };
+
+                    let node = match node {
+                        AstExpr::Ident(name) => PathSegment::Static(name.clone()),
+                        AstExpr::Literal(Literal::UnquotedString(name) | Literal::String(name)) => {
+                            PathSegment::Static(name.to_string())
+                        }
+                        AstExpr::Interpolation { expr } => PathSegment::Dynamic(
+                            AstExpr::Interpolation { expr: expr.clone() }.into(),
+                        ),
+                        _ => panic!(),
+                    };
+
+                    nodes.push(node);
                 }
 
-                *self = checkpoint;
-
-                let expr = match self.parse_expr() {
+                let value = match checkpoint.parse_expr() {
                     AstExpr::Ident(id) => AstExpr::Literal(Literal::UnquotedString(id)),
                     e => e,
                 };
 
+                *self = checkpoint;
+
                 AstStatement::Assignation {
-                    path: segments,
-                    value: Box::new(expr.into()),
+                    path: nodes,
+                    value: value.into(),
                 }
             }
             kw!(Template) => self.parse_template_definition(level),
