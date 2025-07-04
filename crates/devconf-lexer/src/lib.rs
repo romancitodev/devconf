@@ -379,11 +379,11 @@ mod tests {
 
     #[test]
     fn test_tokenize_valid_float() {
-        let input = "3.1415";
+        let input = "2.7123";
         let lexer = Lexer::from_str(input);
         assert!(lexer.is_ok());
         let tokens = lexer.unwrap();
-        assert_eq!(Vec::from(tokens), &[lit!(3.1415)]);
+        assert_eq!(Vec::from(tokens), &[lit!(2.7123)]);
     }
 
     #[test]
@@ -420,14 +420,14 @@ mod tests {
 
     #[test]
     fn test_tokenize_formatted_floats() {
-        let input = "3.1_415\n42.45_434\n.5";
+        let input = "2.7_142\n42.45_434\n.5";
         let lexer = Lexer::from_str(input);
         assert!(lexer.is_ok());
         let tokens = lexer.unwrap();
         assert_eq!(
             Vec::from(tokens),
             &[
-                lit!(3.1415),
+                lit!(2.7142),
                 T!(Newline),
                 lit!(42.45434),
                 T!(Newline),

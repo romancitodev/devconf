@@ -30,3 +30,15 @@ app: {
       hola
 
 @template
+
+${default}
+
+# estos 2 son invalidos.
+${name}: hello
+@if ...:
+   ${name}
+
+@template pepe(name):
+   ${name}
+   @if ...:
+      ${name}

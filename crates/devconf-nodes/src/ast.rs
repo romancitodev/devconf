@@ -42,33 +42,33 @@ pub enum AstUnaryOp {
     Not,
 }
 
-impl Into<AstExpr> for i64 {
-    fn into(self) -> AstExpr {
-        AstExpr::Literal(Literal::Integer(self))
+impl From<i64> for AstExpr {
+    fn from(val: i64) -> Self {
+        AstExpr::Literal(Literal::Integer(val))
     }
 }
 
-impl Into<AstExpr> for f64 {
-    fn into(self) -> AstExpr {
-        AstExpr::Literal(Literal::Float(self))
+impl From<f64> for AstExpr {
+    fn from(val: f64) -> Self {
+        AstExpr::Literal(Literal::Float(val))
     }
 }
 
-impl Into<AstExpr> for &str {
-    fn into(self) -> AstExpr {
-        AstExpr::Literal(Literal::String(self.to_owned()))
+impl From<&str> for AstExpr {
+    fn from(val: &str) -> Self {
+        AstExpr::Literal(Literal::String(val.to_owned()))
     }
 }
 
-impl Into<AstExpr> for String {
-    fn into(self) -> AstExpr {
-        AstExpr::Literal(Literal::String(self))
+impl From<String> for AstExpr {
+    fn from(val: String) -> Self {
+        AstExpr::Literal(Literal::String(val))
     }
 }
 
-impl Into<AstExpr> for bool {
-    fn into(self) -> AstExpr {
-        AstExpr::Literal(Literal::Boolean(self))
+impl From<bool> for AstExpr {
+    fn from(val: bool) -> Self {
+        AstExpr::Literal(Literal::Boolean(val))
     }
 }
 

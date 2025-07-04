@@ -103,8 +103,54 @@ macro_rules! expr {
         }
     }
 }
+pub(crate) fn expand_expr(expr: &AstExpr, substitutions: &HashMap<String, AstExpr>) -> AstExpr {
+    match expr {
+        AstExpr::Ident(name) => {
+            let expr = substitutions
+                .get(name)
+                .cloned()
+                .unwrap_or_else(|| expr.clone());
+            match expr {
+                AstExpr::Ident(i) => AstExpr::Literal(Literal::UnquotedString(i)),
+                e => e,
+            }
+        }
+        AstExpr::Literal(lit) => AstExpr::Literal(lit.clone()),
+        AstExpr::Array(elements) => AstExpr::Array(
+            elements
+                .iter()
+                .map(|element| expand_expr(element, substitutions))
+                .collect(),
+        ),
+        AstExpr::Object(pairs) => AstExpr::Object(
+            pairs
+                .iter()
+                .map(|(key, value)| (key.clone(), expand_expr(value, substitutions)))
+                .collect(),
+        ),
+        AstExpr::BinaryExpr { op, left, right } => AstExpr::BinaryExpr {
+            op: op.clone(),
+            left: Box::new(expand_expr(left, substitutions)),
+            right: Box::new(expand_expr(right, substitutions)),
+        },
+        AstExpr::UnaryExpr { op, expr } => AstExpr::UnaryExpr {
+            op: op.clone(),
+            expr: Box::new(expand_expr(expr, substitutions)),
+        },
+        AstExpr::Cast { expr, ty } => AstExpr::Cast {
+            expr: Box::new(expand_expr(expr, substitutions)),
+            ty: ty.clone(),
+        },
+        AstExpr::Interpolation { expr } => expand_expr(expr, substitutions),
+        _ => expr.clone(),
+    }
+}
+
+use std::collections::HashMap;
 
 pub use bin_op;
+use devconf_lexer::token::Literal;
+use devconf_nodes::ast::AstExpr;
 pub use scope;
 pub use stmt;
 pub use unary_op;

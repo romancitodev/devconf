@@ -82,11 +82,11 @@ impl<'i, C: ToString> AddContext<SourceLexer<'i>, C> for LexerError<'i> {
 
 impl fmt::Display for LexerError<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        _ = Report::build(ReportKind::Error, self.span.clone())
+        _ = Report::build(ReportKind::Error, self.span)
             .with_labels(
                 self.labels
                     .iter()
-                    .map(|(span, msg)| Label::new(span.clone()).with_message(msg)),
+                    .map(|(span, msg)| Label::new(*span).with_message(msg)),
             )
             .finish()
             .eprint(Source::from(self.base));

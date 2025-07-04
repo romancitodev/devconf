@@ -16,7 +16,7 @@ fn test_template_parsing() {
             ["name".to_owned()];
             [];
             scope![stmt! {
-                @assign [PathSegment::Static("app".to_owned().into())], expr!(@unboxed @lit "rust".to_owned().into())
+                @assign [PathSegment::Static("app".to_owned())], expr!(@unboxed @lit "rust".to_owned().into())
             }]
         ]]
     )
@@ -34,13 +34,13 @@ fn test_parse_template_and_use() {
                 ["name".to_owned()];
                 [];
                 scope![stmt! {
-                    @assign [PathSegment::Static("app".to_owned().into())], expr!(@inter
+                    @assign [PathSegment::Static("app".to_owned())], expr!(@inter
                         *expr!(@ident "name".to_owned())
                     )
                 }]
             ],
             stmt! {
-                @assign [PathSegment::Static("app".to_owned().into())], *expr!(@unquoted "rick".to_owned().into())
+                @assign [PathSegment::Static("app".to_owned())], *expr!(@unquoted "rick".to_owned())
             }
         ]
     )
@@ -64,7 +64,7 @@ fn test_parse_template_with_interpolation() {
                 }]
             ],
             stmt! {
-                @assign [PathSegment::Static("rick".to_owned().into())], *expr!(@lit true.into())
+                @assign [PathSegment::Static("rick".to_owned())], *expr!(@lit true.into())
             }
         ]
     )
@@ -82,13 +82,13 @@ fn test_parse_template_with_dot_notation() {
                 ["name".to_owned()];
                 [];
                 scope![stmt! {
-                    @assign [PathSegment::Static("app".to_owned().into()),PathSegment::Dynamic(
+                    @assign [PathSegment::Static("app".to_owned()),PathSegment::Dynamic(
                         expr!(@inter *expr!(@ident "name".to_owned())).into()
                     )], *expr!(@lit true.into())
                 }]
             ],
             stmt! {
-                @assign [PathSegment::Static("app".to_owned().into()), PathSegment::Static("rick".to_owned().into())], *expr!(@lit true.into())
+                @assign [PathSegment::Static("app".to_owned()), PathSegment::Static("rick".to_owned())], *expr!(@lit true.into())
             }
         ]
     )
@@ -139,7 +139,7 @@ fn test_simple_assignment() {
     assert_eq!(
         scope,
         scope![stmt! {
-            @assign [PathSegment::Static("app".to_owned().into())], expr!(@unboxed @lit "rust".to_owned().into())
+            @assign [PathSegment::Static("app".to_owned())], expr!(@unboxed @lit "rust".to_owned().into())
         }]
     );
 }
@@ -151,9 +151,21 @@ fn test_simple_assignment_unquoted_string() {
     assert_eq!(
         scope,
         scope![stmt! {
-            @assign [PathSegment::Static("app".to_owned().into())], expr!(@unboxed @unquoted "rust".to_owned().into())
+            @assign [PathSegment::Static("app".to_owned())], expr!(@unboxed @unquoted "rust".to_owned())
         }]
     );
+}
+
+#[test]
+fn test_simple_expr() {
+    let input = "version: \'1.0.0'\ndebug: ${NODE_ENV == debug}";
+    let _scope = create_scope(input);
+    // assert_eq!(
+    //     scope,
+    //     scope![stmt! {
+    //         @assign [PathSegment::Static("app".to_owned().into())], expr!(@unboxed @unquoted "rust".to_owned().into())
+    //     }]
+    // );
 }
 
 #[test]
@@ -163,7 +175,7 @@ fn test_simple_assignment_string() {
     assert_eq!(
         scope,
         scope![stmt! {
-            @assign [PathSegment::Static("app".to_owned().into())], expr!(@unboxed @lit "rust".to_owned().into())
+            @assign [PathSegment::Static("app".to_owned())], expr!(@unboxed @lit "rust".to_owned().into())
         }]
     );
 }
@@ -175,7 +187,7 @@ fn test_simple_assignment_integer() {
     assert_eq!(
         scope,
         scope![stmt! {
-            @assign [PathSegment::Static("version".to_owned().into())], expr!(@unboxed @lit 1.into())
+            @assign [PathSegment::Static("version".to_owned())], expr!(@unboxed @lit 1.into())
         }]
     );
 }
@@ -187,7 +199,7 @@ fn test_simple_assignment_formatted_integer() {
     assert_eq!(
         scope,
         scope![stmt! {
-            @assign [PathSegment::Static("version".to_owned().into())], expr!(@unboxed @lit 123456.into())
+            @assign [PathSegment::Static("version".to_owned())], expr!(@unboxed @lit 123456.into())
         }]
     );
 }
@@ -206,7 +218,7 @@ fn test_comment_and_assignment() {
     assert_eq!(
         scope,
         scope![stmt! {
-            @assign [PathSegment::Static("app".to_owned().into())], expr!(@unboxed @lit "rust".to_owned().into())
+            @assign [PathSegment::Static("app".to_owned())], expr!(@unboxed @lit "rust".to_owned().into())
         }]
     );
 }
@@ -218,7 +230,7 @@ fn test_single_array() {
     assert_eq!(
         scope,
         scope![stmt! {
-            @assign [PathSegment::Static("items".to_owned().into())],
+            @assign [PathSegment::Static("items".to_owned())],
             *expr![@array
                 expr![@unboxed @lit "apple".to_owned().into()],
                 expr![@unboxed @lit "banana".to_owned().into()],
@@ -235,9 +247,9 @@ fn test_mixed_array() {
     assert_eq!(
         scope,
         scope![stmt! {
-            @assign [PathSegment::Static("items".to_owned().into())],
+            @assign [PathSegment::Static("items".to_owned())],
             *expr![@array
-                expr![@unboxed @unquoted "apple".to_owned().into()],
+                expr![@unboxed @unquoted "apple".to_owned()],
                 expr![@unboxed @lit "banana".to_owned().into()],
                 expr![@unboxed @lit "cherry".to_owned().into()],
                 expr![@unboxed @lit true.into()],
@@ -254,7 +266,7 @@ fn test_simple_object() {
     assert_eq!(
         scope,
         scope![stmt! {
-            @assign [PathSegment::Static("items".to_owned().into())],
+            @assign [PathSegment::Static("items".to_owned())],
             *expr![@object
                 "apple".to_owned() => expr![@unboxed @lit 1.into()],
                 "banana".to_owned() => expr![@unboxed @lit 2.into()],
@@ -271,12 +283,12 @@ fn test_complex_object() {
     assert_eq!(
         scope,
         scope![stmt! {
-            @assign [PathSegment::Static("app".to_owned().into())],
+            @assign [PathSegment::Static("app".to_owned())],
             *expr![@object
                 "name".to_owned() => expr![@unboxed @lit "My App".to_owned().into()],
                 "version".to_owned() => expr![@unboxed @lit 1.0.into()],
                 "authors".to_owned() => *expr![@array
-                    expr![@unboxed @unquoted "roman".to_owned().into()],
+                    expr![@unboxed @unquoted "roman".to_owned()],
                     expr![@unboxed @lit "Apika luca".to_owned().into()]
                 ]
             ]
@@ -290,10 +302,8 @@ fn test_assignment_and_interpolation() {
     let scope = create_scope(input);
     assert_eq!(
         scope,
-        scope![
-            stmt![@assign [PathSegment::Static("port".to_owned().into())],
-                expr![@inter expr!(@unboxed @ident "APP_PORT".to_owned().into())].into()]
-        ]
+        scope![stmt![@assign [PathSegment::Static("port".to_owned())],
+                expr![@inter expr!(@unboxed @ident "APP_PORT".to_owned())]]]
     )
 }
 
@@ -303,10 +313,8 @@ fn test_paren() {
     let scope = create_scope(input);
     assert_eq!(
         scope,
-        scope![
-            stmt![@assign [PathSegment::Static("port".to_owned().into())],
-                expr!(@unboxed @lit 83.into())]
-        ]
+        scope![stmt![@assign [PathSegment::Static("port".to_owned())],
+                expr!(@unboxed @lit 83.into())]]
     )
 }
 
@@ -316,14 +324,12 @@ fn test_assignment_and_interpolation_with_type() {
     let scope = create_scope(input);
     assert_eq!(
         scope,
-        scope![
-            stmt![@assign [PathSegment::Static("port".to_owned().into())],
-                expr![@inter expr!(
-                    @cast expr!(@unboxed @ident "APP_PORT".to_owned().into()
-                ).into(),
-                    "int".to_owned()
-                )].into()]
-        ]
+        scope![stmt![@assign [PathSegment::Static("port".to_owned())],
+        expr![@inter expr!(
+            @cast expr!(@unboxed @ident "APP_PORT".to_owned()
+        ).into(),
+            "int".to_owned()
+        )]]]
     )
 }
 #[test]
@@ -332,13 +338,11 @@ fn test_interpolation_with_expression() {
     let scope = create_scope(input);
     assert_eq!(
         scope,
-        scope![
-            stmt![@assign [PathSegment::Static("port".to_owned().into())],
-                expr![@inter
-                    expr![
-                    @bin expr!(@ident "APP_PORT".to_owned().into()), Or, expr!(@lit 8080.into()).into()
-                    ].into()].into()]
-        ]
+        scope![stmt![@assign [PathSegment::Static("port".to_owned())],
+        expr![@inter
+            expr![
+            @bin expr!(@ident "APP_PORT".to_owned()), Or, expr!(@lit 8080.into())
+            ]]]]
     )
 }
 
@@ -348,18 +352,16 @@ fn test_complex_interpolation_with_expression() {
     let scope = create_scope(input);
     assert_eq!(
         scope,
-        scope![
-            stmt![@assign [PathSegment::Static("port".to_owned().into())],
-                expr![@inter
-                    expr![@bin
-                        expr!(@cast
-                            expr!(@ident "APP_PORT".to_owned()), "int".to_owned()).into(),
-                            Or,
-                            expr!(@lit 8080.into()).into()
-                    ].into()
-                ].into()
+        scope![stmt![@assign [PathSegment::Static("port".to_owned())],
+            expr![@inter
+                expr![@bin
+                    expr!(@cast
+                        expr!(@ident "APP_PORT".to_owned()), "int".to_owned()).into(),
+                        Or,
+                        expr!(@lit 8080.into())
+                ]
             ]
-        ]
+        ]]
     )
 }
 
@@ -379,8 +381,8 @@ fn test_dot_assignation() {
         scope,
         scope![stmt! [
             @assign [
-                PathSegment::Static("app".to_owned().into()),
-                PathSegment::Static("author".to_owned().into())
+                PathSegment::Static("app".to_owned()),
+                PathSegment::Static("author".to_owned())
             ],
             expr!(@unboxed @lit "roman".to_owned().into())
         ]]
@@ -397,8 +399,8 @@ fn test_dot_assignation_with_interpolation() {
         scope,
         scope![stmt! [
             @assign [
-                PathSegment::Static("app".to_owned().into()),
-                PathSegment::Dynamic(expr!(@inter expr!(@unboxed @ident "author".to_owned().into())).into())
+                PathSegment::Static("app".to_owned()),
+                PathSegment::Dynamic(expr!(@inter expr!(@unboxed @ident "author".to_owned())).into())
             ],
             expr!(@unboxed @lit "roman".to_owned().into())
         ]]
@@ -414,14 +416,14 @@ fn test_valid_type_resolved_expresssion() {
         scope,
         scope![stmt! [
             @assign [
-                PathSegment::Static("app".to_owned().into()),
+                PathSegment::Static("app".to_owned()),
                 PathSegment::Dynamic(
                     expr![@inter
                     expr![@bin
-                        expr!(@ident "APP_NAME".to_owned()).into(),
+                        expr!(@ident "APP_NAME".to_owned()),
                             Or,
                             expr!(@lit "default".into())
-                    ].into()
+                    ]
                 ].into()
                 )
             ],
@@ -460,8 +462,8 @@ fn test_dot_assignation_with_literals() {
         scope,
         scope![stmt! [
             @assign [
-                PathSegment::Static("app".to_owned().into()),
-                PathSegment::Static("author".to_owned().into())
+                PathSegment::Static("app".to_owned()),
+                PathSegment::Static("author".to_owned())
             ],
             expr!(@unboxed @lit "roman".to_owned().into())
         ]]
@@ -484,9 +486,9 @@ fn test_dot_assignation_with_nested_fields() {
         scope,
         scope![stmt! [
             @assign [
-                PathSegment::Static("app".to_owned().into()),
-                PathSegment::Static("user".to_owned().into()),
-                PathSegment::Static("enabled".to_owned().into())
+                PathSegment::Static("app".to_owned()),
+                PathSegment::Static("user".to_owned()),
+                PathSegment::Static("enabled".to_owned())
             ],
             expr!(@unboxed @lit true.into())
         ]]
@@ -503,8 +505,8 @@ fn test_invalid_dot_assignation_with_dots() {
         scope,
         scope![stmt! [
             @assign [
-                PathSegment::Static("app".to_owned().into()),
-                PathSegment::Static("author".to_owned().into())
+                PathSegment::Static("app".to_owned()),
+                PathSegment::Static("author".to_owned())
             ],
             expr!(@unboxed @lit "roman".to_owned().into())
         ]]

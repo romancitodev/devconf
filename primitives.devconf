@@ -1,26 +1,28 @@
-# This a comment
-name: app
-version: "0.1.0"
-publish: false # Only set it to true if you want to really publish it
-foo: 5.0
+# Basic configuration
+name: "my-app"
+foo: rick
+version: "1.0.0"
+# debug: ${NODE_ENV == "debug"}
 
-likes: 78_464_123
+# api.base = ${API_BASE}
 
-avg: 78.45_112
+app.port: ${PORT:int || 8080}
+app.database.host: "localhost"
+app.database.pool_size: 10
 
-deps: [tokio, thiserror]
-
-config: {
-   logging: true,
-   browser: {
-      extensions: null
-   },
+# Arrays and objects
+features: [auth, logging, metrics]
+cache: {
+   enabled: true,
+   ttl: 300,
+   type: "redis"
 }
+#
+# Templates for reusable configurations
+@template service(name, port, database=null):
+   services.${name}.port: ${port}
+   services.${name}.health_check: "/health"
 
-bar: { rock: roll, never: "gonna give you up" }
-
-os.user: romandev
-
-@template make_an_user(user):
-   # The ${user} expression must be valid only in this context
-   os.${user}: true
+# Use templates
+@use service("api", 8001, "main_db")
+@use service("worker", 8002)

@@ -65,7 +65,7 @@ impl SpannedToken {
     }
 
     pub fn split(&self) -> (Span, Token) {
-        (self.span.clone(), self.token.clone())
+        (self.span, self.token.clone())
     }
 }
 
@@ -111,11 +111,11 @@ impl Token {
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Token::Comment(comment) => write!(f, "# {}", comment),
-            Token::Ident(ident) => write!(f, "{}", ident),
-            Token::Punctuation(punct) => write!(f, "{}", punct),
-            Token::Literal(lit) => write!(f, "{}", lit),
-            Token::Keyword(keyword) => write!(f, "{}", keyword),
+            Token::Comment(comment) => write!(f, "# {comment}"),
+            Token::Ident(ident) => write!(f, "{ident}"),
+            Token::Punctuation(punct) => write!(f, "{punct}"),
+            Token::Literal(lit) => write!(f, "{lit}"),
+            Token::Keyword(keyword) => write!(f, "{keyword}"),
         }
     }
 }
@@ -128,11 +128,11 @@ pub enum Punctuation {
     Dot,
     Dollar,
 
-    Equals,
-    Eq,
-    Ne,
-    And,
-    Or,
+    Equals,   // =
+    Eq,       // ==
+    Ne,       // !=
+    And,      // &&
+    Or,       // ||
     Bang,     // !, used for negation
     Question, // ?
 
@@ -172,7 +172,7 @@ impl fmt::Display for Punctuation {
             Punctuation::OpenSquareBracket => "[",
             Punctuation::CloseSquareBracket => "]",
         };
-        write!(f, "{}", symbol)
+        write!(f, "{symbol}")
     }
 }
 
@@ -189,11 +189,11 @@ pub enum Literal {
 impl fmt::Display for Literal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Literal::String(s) => write!(f, "\"{}\"", s),
-            Literal::UnquotedString(s) => write!(f, "{}", s),
-            Literal::Integer(i) => write!(f, "{}", i),
-            Literal::Float(fl) => write!(f, "{}", fl),
-            Literal::Boolean(b) => write!(f, "{}", b),
+            Literal::String(s) => write!(f, "\"{s}\""),
+            Literal::UnquotedString(s) => write!(f, "{s}"),
+            Literal::Integer(i) => write!(f, "{i}"),
+            Literal::Float(fl) => write!(f, "{fl}"),
+            Literal::Boolean(b) => write!(f, "{b}"),
             Literal::Null => write!(f, "null"),
         }
     }
@@ -215,6 +215,6 @@ impl fmt::Display for Keyword {
             Keyword::Use => "@use",
             Keyword::Template => "@template",
         };
-        write!(f, "{}", keyword)
+        write!(f, "{keyword}")
     }
 }

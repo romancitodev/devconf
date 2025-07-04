@@ -23,7 +23,7 @@ fn test_literal_types() {
     let int_expr = AstExpr::Literal(Literal::Integer(42));
     assert_eq!(checker.infer_type(&int_expr).unwrap(), Type::Int);
 
-    let float_expr = AstExpr::Literal(Literal::Float(3.14));
+    let float_expr = AstExpr::Literal(Literal::Float(300.12));
     assert_eq!(checker.infer_type(&float_expr).unwrap(), Type::Float);
 
     // Boolean literal
@@ -279,25 +279,13 @@ fn test_context_validation_value() {
 fn test_string_to_type_conversion() {
     let checker = create_checker();
 
-    assert_eq!(
-        checker.string_to_type(&"str".to_string()).unwrap(),
-        Type::String
-    );
-    assert_eq!(
-        checker.string_to_type(&"int".to_string()).unwrap(),
-        Type::Int
-    );
-    assert_eq!(
-        checker.string_to_type(&"float".to_string()).unwrap(),
-        Type::Float
-    );
-    assert_eq!(
-        checker.string_to_type(&"bool".to_string()).unwrap(),
-        Type::Bool
-    );
+    assert_eq!(checker.string_to_type("str").unwrap(), Type::String);
+    assert_eq!(checker.string_to_type("int").unwrap(), Type::Int);
+    assert_eq!(checker.string_to_type("float").unwrap(), Type::Float);
+    assert_eq!(checker.string_to_type("bool").unwrap(), Type::Bool);
     // Unknown type should return error
     assert_eq!(
-        checker.string_to_type(&"unknown_type".to_string()).unwrap(),
+        checker.string_to_type("unknown_type").unwrap(),
         Type::Unknown
     );
 }
@@ -401,6 +389,6 @@ fn test_error_messages() {
     assert!(error.contains("Expression must be a string type, got int"));
 
     // Unknown type error message
-    let t = checker.string_to_type(&"invalid_type".to_string()).unwrap();
+    let t = checker.string_to_type("invalid_type").unwrap();
     assert_eq!(t, Type::Unknown);
 }

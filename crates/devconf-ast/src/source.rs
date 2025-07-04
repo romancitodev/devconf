@@ -124,7 +124,7 @@ impl<'i> SourceAst<'i> {
     pub fn error_in_place(&self, msg: impl fmt::Display + Clone) -> ! {
         let span = Span::char(self.last_offset - 1);
         self.error_build(
-            span.clone(),
+            span,
             |b| {
                 b.with_message(msg.clone()).with_label(
                     Label::new(span)

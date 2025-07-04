@@ -16,14 +16,14 @@ pub struct MacroDefinition {
     pub body: AstScope,
 }
 
-impl Into<MacroDefinition> for AstStatement {
-    fn into(self) -> MacroDefinition {
-        if let Self::TemplateDefinition {
+impl From<AstStatement> for MacroDefinition {
+    fn from(val: AstStatement) -> Self {
+        if let AstStatement::TemplateDefinition {
             params,
             defaults,
             body,
             ..
-        } = self
+        } = val
         {
             MacroDefinition {
                 params,

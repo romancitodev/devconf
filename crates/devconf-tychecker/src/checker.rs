@@ -24,14 +24,14 @@ pub enum Context {
 }
 
 // we implement the into because it's easier for us to check before.
-impl Into<Type> for Literal {
-    fn into(self) -> Type {
-        match self {
-            Self::Boolean(_) => Type::Bool,
-            Self::Float(_) => Type::Float,
-            Self::Integer(_) => Type::Int,
-            Self::String(_) | Self::UnquotedString(_) => Type::String,
-            Self::Null => Type::Null,
+impl From<Literal> for Type {
+    fn from(val: Literal) -> Self {
+        match val {
+            Literal::Boolean(_) => Type::Bool,
+            Literal::Float(_) => Type::Float,
+            Literal::Integer(_) => Type::Int,
+            Literal::String(_) | Literal::UnquotedString(_) => Type::String,
+            Literal::Null => Type::Null,
         }
     }
 }
@@ -43,9 +43,9 @@ impl fmt::Display for Type {
             Type::Int => write!(f, "int"),
             Type::Float => write!(f, "float"),
             Type::Bool => write!(f, "boolean"),
-            Type::Array(e) => write!(f, "array of {}", e),
-            Type::Object(hash_map) => write!(f, "hasmap of {:?}", hash_map),
-            Type::Union(items) => write!(f, "union of {:?}", items),
+            Type::Array(e) => write!(f, "array of {e}"),
+            Type::Object(hash_map) => write!(f, "hasmap of {hash_map:?}"),
+            Type::Union(items) => write!(f, "union of {items:?}"),
             Type::Null => write!(f, "null"),
             Type::Unknown => write!(f, "array of unknown"),
         }
@@ -105,7 +105,7 @@ impl TypeChecker {
                     let expected = self.string_to_type(ty)?;
                     let source_type = self.infer_type(cast_expr)?;
                     if !self.resolve_cast(&source_type, &expected) {
-                        return Err(format!("Cannot cast from {} to {}", source_type, expected));
+                        return Err(format!("Cannot cast from {source_type} to {expected}"));
                     }
                     Ok(expected)
                 }
@@ -116,9 +116,9 @@ impl TypeChecker {
             },
             AstExpr::Cast { expr, ty } => {
                 let expr = self.infer_type(expr)?;
-                let expected = self.string_to_type(&ty)?;
+                let expected = self.string_to_type(ty)?;
                 if !self.resolve_cast(&expr, &expected) {
-                    return Err(format!("Cannot cast from {} to {}", expr, ty));
+                    return Err(format!("Cannot cast from {expr} to {ty}"));
                 }
                 Ok(expected)
             }
@@ -142,8 +142,8 @@ impl TypeChecker {
         }
     }
 
-    pub(crate) fn string_to_type(&self, ty: &String) -> Result<Type, String> {
-        match ty.as_str() {
+    pub(crate) fn string_to_type(&self, ty: &str) -> Result<Type, String> {
+        match ty {
             "str" => Ok(Type::String),
             "int" => Ok(Type::Int),
             "float" => Ok(Type::Float),

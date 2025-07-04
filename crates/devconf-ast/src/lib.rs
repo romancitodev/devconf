@@ -17,6 +17,7 @@ use devconf_lexer::{T, kw, token::Token};
 use devconf_tychecker::Context;
 
 pub use property::Property;
+use utils::expand_expr;
 pub use value::Value;
 
 use crate::nodes::{AstStatement, PathSegment};
@@ -111,14 +112,14 @@ impl SourceAst<'_> {
         match stmt {
             AstStatement::Comment => AstStatement::Comment,
             AstStatement::Expression(expr) => {
-                AstStatement::Expression(Box::new(self.expand_expr(expr, substitutions)))
+                AstStatement::Expression(Box::new(expand_expr(expr, substitutions)))
             }
             AstStatement::Conditional {
                 test,
                 body,
                 otherwise,
             } => AstStatement::Conditional {
-                test: Box::new(self.expand_expr(test, substitutions)),
+                test: Box::new(expand_expr(test, substitutions)),
                 body: self.expand_scope(body, substitutions),
                 otherwise: otherwise
                     .as_ref()
@@ -129,7 +130,7 @@ impl SourceAst<'_> {
                     .iter()
                     .map(|segment| self.expand_path_segment(segment, substitutions))
                     .collect(),
-                value: Box::new(self.expand_expr(value, substitutions)),
+                value: Box::new(expand_expr(value, substitutions)),
             },
             AstStatement::TemplateCalling { name, args } => {
                 // Template calls inside templates should have their arguments expanded
@@ -137,7 +138,7 @@ impl SourceAst<'_> {
                     name: name.clone(),
                     args: args
                         .iter()
-                        .map(|arg| self.expand_expr(arg, substitutions))
+                        .map(|arg| expand_expr(arg, substitutions))
                         .collect(),
                 }
             }
@@ -163,7 +164,7 @@ impl SourceAst<'_> {
         match segment {
             PathSegment::Static(s) => PathSegment::Static(s.clone()),
             PathSegment::Dynamic(expr) => {
-                let expr = self.expand_expr(expr, substitutions);
+                let expr = expand_expr(expr, substitutions);
                 if let Err(e) = self.checker.check_expr(&expr, Context::Expression) {
                     self.error_in_place(e);
                 }
@@ -174,49 +175,6 @@ impl SourceAst<'_> {
                     _ => self.error_in_place("invlaid expression"),
                 }
             }
-        }
-    }
-
-    fn expand_expr(&self, expr: &AstExpr, substitutions: &HashMap<String, AstExpr>) -> AstExpr {
-        match expr {
-            AstExpr::Ident(name) => {
-                let expr = substitutions
-                    .get(name)
-                    .cloned()
-                    .unwrap_or_else(|| expr.clone());
-                match expr {
-                    AstExpr::Ident(i) => AstExpr::Literal(Literal::UnquotedString(i)),
-                    e => e,
-                }
-            }
-            AstExpr::Literal(lit) => AstExpr::Literal(lit.clone()),
-            AstExpr::Array(elements) => AstExpr::Array(
-                elements
-                    .iter()
-                    .map(|elem| self.expand_expr(elem, substitutions))
-                    .collect(),
-            ),
-            AstExpr::Object(pairs) => AstExpr::Object(
-                pairs
-                    .iter()
-                    .map(|(key, value)| (key.clone(), self.expand_expr(value, substitutions)))
-                    .collect(),
-            ),
-            AstExpr::BinaryExpr { op, left, right } => AstExpr::BinaryExpr {
-                op: op.clone(),
-                left: Box::new(self.expand_expr(left, substitutions)),
-                right: Box::new(self.expand_expr(right, substitutions)),
-            },
-            AstExpr::UnaryExpr { op, expr } => AstExpr::UnaryExpr {
-                op: op.clone(),
-                expr: Box::new(self.expand_expr(expr, substitutions)),
-            },
-            AstExpr::Cast { expr, ty } => AstExpr::Cast {
-                expr: Box::new(self.expand_expr(expr, substitutions)),
-                ty: ty.clone(),
-            },
-            AstExpr::Interpolation { expr } => self.expand_expr(expr, substitutions),
-            _ => expr.clone(),
         }
     }
 
@@ -283,7 +241,7 @@ impl SourceAst<'_> {
         let mut checkpoint = self.clone();
         let first = self.peek_expect();
 
-        println!("parse_statement: token = {:#?}", first);
+        println!("parse_statement: token = {first:#?}");
 
         match **first {
             Token::Comment(_) => AstStatement::Comment,
@@ -299,7 +257,7 @@ impl SourceAst<'_> {
                             if !matches!(literal, Literal::String(_) | Literal::UnquotedString(_)) {
                                 self.error_at(
                                     span,
-                                    format!("Seems to be an invalid token ({:?})", literal),
+                                    format!("Seems to be an invalid token ({literal:?})"),
                                 );
                             };
                             seen_dot = false;
@@ -432,7 +390,7 @@ impl SourceAst<'_> {
     }
 
     fn parse_template_definition(&mut self, level: usize) -> AstStatement {
-        // This is the entry point of the template defintion.
+        // This is the entry point of the template definition.
         // We should parse first the arguments.
         // The AST could be Ident(name) -> OpenParen -> (Ident(_),*) -> CloseParen -> Colon
         let mut checkpoint = self.clone();
@@ -510,8 +468,7 @@ impl SourceAst<'_> {
     }
 
     fn parse_template_body(&mut self, level: usize) -> AstScope {
-        let body = self.parse_scope(level + 1);
-        body
+        self.parse_scope(level + 1)
     }
 
     fn parse_default_expr(&mut self) -> AstExpr {
@@ -552,6 +509,39 @@ impl SourceAst<'_> {
             body,
             otherwise,
         }
+    }
+
+    fn precedence_of(&self, token: &Token) -> Option<(u8, AstBinaryOp)> {
+        match token {
+            T![Or] => Some((1, AstBinaryOp::Or)),
+            T![And] => Some((2, AstBinaryOp::And)),
+            T![Eq] => Some((3, AstBinaryOp::Eq)),
+            T![Ne] => Some((4, AstBinaryOp::Ne)),
+            _ => None,
+        }
+    }
+
+    fn parse_with_precedence(&mut self, min: u8) -> AstExpr {
+        let mut checkpoint = self.clone();
+        let mut left = checkpoint.parse_unary();
+
+        while let Some(expr) = checkpoint.peek() {
+            if let Some((prec, op)) = self.precedence_of(&(expr).clone()) {
+                if prec < min {
+                    break;
+                }
+                let right = self.parse_with_precedence(min + 1);
+                left = AstExpr::BinaryExpr {
+                    op,
+                    left: Box::new(left),
+                    right: Box::new(right),
+                }
+            } else {
+                break;
+            }
+        }
+        *self = checkpoint;
+        left
     }
 
     // Main expression parser with precedence
@@ -606,7 +596,10 @@ impl SourceAst<'_> {
     fn parse_equality(&mut self) -> AstExpr {
         let mut expr = self.parse_unary();
 
+        println!("expr : {expr:#?}");
+
         while let Some(token) = self.peek() {
+            println!("parse_eq: {}", **token);
             let op = match **token {
                 T![Eq] => AstBinaryOp::Eq,
                 T![Ne] => AstBinaryOp::Ne,
@@ -648,7 +641,7 @@ impl SourceAst<'_> {
         println!("parsing primary");
         let token = self.peek_expect();
 
-        println!("parse_primary: token = {:#?}", token);
+        println!("parse_primary: token = {token:#?}");
 
         match **token {
             Token::Ident(ref name) => {
@@ -688,16 +681,16 @@ impl SourceAst<'_> {
         self.expect_token(T![OpenSquareBracket]);
         let mut elements = vec![];
 
-        loop {
+        'parser: loop {
             if let Some(token) = self.peek() {
-                println!("Found next token: {:#?}", token);
+                println!("Found next token: {token:#?}");
                 if matches!(**token, T![CloseSquareBracket]) {
                     token.recover();
-                    break;
+                    break 'parser;
                 }
                 token.recover();
             } else {
-                break;
+                break 'parser;
             }
 
             // Parse element
@@ -712,7 +705,7 @@ impl SourceAst<'_> {
 
             // Check what follows
             if let Some(token) = self.peek() {
-                println!("Next token: {:#?}", token);
+                println!("Next token: {token:#?}");
                 match **token {
                     T![Comma] => {
                         println!("Found comma!");
@@ -720,7 +713,7 @@ impl SourceAst<'_> {
                     }
                     T![CloseSquareBracket] => {
                         token.recover();
-                        break;
+                        break 'parser;
                     }
                     _ => {
                         let unexpected = token.accept();
@@ -731,7 +724,7 @@ impl SourceAst<'_> {
                     }
                 }
             } else {
-                break; // End of input
+                break 'parser; // End of input
             }
         }
 
@@ -787,7 +780,7 @@ impl SourceAst<'_> {
     }
 
     fn parse_interpolation(&mut self) -> AstExpr {
-        println!("in interpolation: {:#?}", self);
+        println!("in interpolation: {self:#?}");
         let mut peek = self.clone();
         peek.expect_token(T![Dollar]);
         peek.expect_token(T![OpenBrace]);
@@ -814,10 +807,10 @@ impl SourceAst<'_> {
                     }
 
                     Some(next_token) if matches!(**next_token, T![CloseBrace]) => {
-                        peek.error_at(colon_span, format!("Received :, so there was expected a type hint, but instead no one was provided\n if you don't want to add a type hint, just close the interpolation"));
+                        peek.error_at(colon_span, "Received :, so there was expected a type hint, but instead no one was provided\n if you don't want to add a type hint, just close the interpolation".to_string());
                     }
                     None => {
-                        peek.error_at(colon_span, format!("Received :, so there was expected a type hint, but instead no one was provided\n if you don't want to add a type hint, just close the interpolation"));
+                        peek.error_at(colon_span, "Received :, so there was expected a type hint, but instead no one was provided\n if you don't want to add a type hint, just close the interpolation".to_string());
                     }
                     Some(next_token) => {
                         peek.error_at(next_token.span, format!("Received :, so there was expected a type hint, but instead found: '{}'\n if you don't want to add a type hint, just close the interpolation", **next_token));
@@ -827,7 +820,9 @@ impl SourceAst<'_> {
                 token.recover();
             }
         }
+        println!("after expr pepe {expr:#?}");
         expr = peek.parse_binary_continuation(expr);
+        println!("got expr pepe: ${expr:#?}");
 
         peek.expect_token(T![CloseBrace]);
         *self = peek;
@@ -868,7 +863,8 @@ impl SourceAst<'_> {
 
     // Helper function to continue parsing binary expressions
     fn parse_binary_continuation(&mut self, left: AstExpr) -> AstExpr {
-        // Start with logical OR (lowest precedence in your hierarchy)
+        // TODO Check if this would work.
+        // self.parse_with_precedence(0)
         self.parse_logical_or_continuation(left)
     }
 
@@ -885,6 +881,7 @@ impl SourceAst<'_> {
                 }
                 _ => {
                     token.recover();
+                    // expr = self.parse_logical_and();
                     break;
                 }
             }
