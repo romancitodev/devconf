@@ -2,9 +2,7 @@
 name: "my-app"
 foo: rick
 version: "1.0.0"
-# debug: ${NODE_ENV == "debug"}
-
-# api.base = ${API_BASE}
+debug: ${NODE_ENV:int == "debug" || RUST_ENV == "debug" && 1}
 
 app.port: ${PORT:int || 8080}
 app.database.host: "localhost"
@@ -26,3 +24,4 @@ cache: {
 # Use templates
 @use service("api", 8001, "main_db")
 @use service("worker", 8002)
+

@@ -866,31 +866,7 @@ impl SourceAst<'_> {
 
     // Helper function to continue parsing binary expressions
     fn parse_binary_continuation(&mut self, left: AstExpr) -> AstExpr {
-        // TODO Check if this would work.
-        println!("parse binary continuation: {left:#?}");
         self.parse_with_precedence(0, left)
-        // self.parse_logical_or_continuation(left)
-    }
-
-    fn parse_logical_or_continuation(&mut self, mut expr: AstExpr) -> AstExpr {
-        while let Some(token) = self.peek() {
-            match **token {
-                T![Or] => {
-                    let right = self.parse_logical_and();
-                    expr = AstExpr::BinaryExpr {
-                        op: AstBinaryOp::Or,
-                        left: Box::new(expr),
-                        right: Box::new(right),
-                    };
-                }
-                _ => {
-                    token.recover();
-                    // expr = self.parse_logical_and();
-                    break;
-                }
-            }
-        }
-        expr
     }
 
     fn error_unexpected_token(&mut self, token: SpannedToken) -> ! {
