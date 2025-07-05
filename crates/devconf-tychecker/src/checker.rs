@@ -17,6 +17,7 @@ pub enum Type {
     Unknown,
 }
 
+#[derive(Debug, Clone, Copy)]
 pub enum Context {
     Expression, // on ${}
     If,         // If I'm inside an if expression.
@@ -56,11 +57,13 @@ impl fmt::Display for Type {
 pub struct TypeChecker;
 
 impl TypeChecker {
+    /// # Errors
+    /// - The errors can only occurr when the `Context` is `Expression` and the final inferred type isn't a string.
     pub fn check_expr(&self, expr: &AstExpr, context: Context) -> Result<Type, String> {
-        let inferred_type = self.infer_type(expr)?;
+        let inferred_type = Self::infer_type(expr)?;
 
         if let Context::Expression = context
-            && !self.is_valid_expression_type(&inferred_type)
+            && !Self::is_valid_expression_type(&inferred_type)
         {
             return Err(format!(
                 "Expression must be a string type, got {inferred_type}"
@@ -70,54 +73,52 @@ impl TypeChecker {
         Ok(inferred_type)
     }
 
-    pub(crate) fn infer_type(&self, expr: &AstExpr) -> Result<Type, String> {
+    #[allow(clippy::match_wildcard_for_single_variants)]
+    pub(crate) fn infer_type(expr: &AstExpr) -> Result<Type, String> {
         match expr {
             AstExpr::Ident(_) => Ok(Type::String),
             AstExpr::Literal(literal) => Ok(literal.clone().into()),
             AstExpr::BinaryExpr { op, left, right } => {
-                let lhs = self.infer_type(left)?;
-                let rhs = self.infer_type(right)?;
-
-                self.resolve_binary_op(op, lhs, rhs)
+                let lhs = Self::infer_type(left)?;
+                let rhs = Self::infer_type(right)?;
+                Ok(Self::resolve_binary_op(op, &lhs, &rhs))
             }
             AstExpr::UnaryExpr { op, expr } => {
-                let expr = self.infer_type(expr)?;
-                self.resolve_unary_op(op, &expr)
+                let expr = Self::infer_type(expr)?;
+                Ok(Self::resolve_unary_op(op, &expr))
             }
             AstExpr::Array(elements) => {
                 if elements.is_empty() {
                     return Ok(Type::Array(Box::new(Type::Unknown)));
                 }
 
-                let first = self.infer_type(&elements[0])?;
+                let first = Self::infer_type(&elements[0])?;
                 let ty = elements.iter().skip(1).fold(first, |f, expr| {
-                    let element = self.infer_type(expr).expect("Unable to infer type.");
-                    self.unify_types(&f, &element)
-                        .expect("Unable to unify types.")
+                    let element = Self::infer_type(expr).expect("Unable to infer type.");
+                    Self::unify_types(&f, &element)
                 });
                 Ok(Type::Array(Box::new(ty)))
             }
-            AstExpr::Interpolation { expr } => match expr.as_ref() {
-                AstExpr::Cast {
+            AstExpr::Interpolation { expr } => {
+                if let AstExpr::Cast {
                     ty,
                     expr: cast_expr,
-                } => {
-                    let expected = self.string_to_type(ty)?;
-                    let source_type = self.infer_type(cast_expr)?;
-                    if !self.resolve_cast(&source_type, &expected) {
+                } = expr.as_ref()
+                {
+                    let expected = Self::string_to_type(ty);
+                    let source_type = Self::infer_type(cast_expr)?;
+                    if !Self::resolve_cast(&source_type, &expected) {
                         return Err(format!("Cannot cast from {source_type} to {expected}"));
                     }
                     Ok(expected)
+                } else {
+                    Self::infer_type(expr)
                 }
-                _ => {
-                    let _inner_type = self.infer_type(expr)?;
-                    Ok(_inner_type)
-                }
-            },
+            }
             AstExpr::Cast { expr, ty } => {
-                let expr = self.infer_type(expr)?;
-                let expected = self.string_to_type(ty)?;
-                if !self.resolve_cast(&expr, &expected) {
+                let expr = Self::infer_type(expr)?;
+                let expected = Self::string_to_type(ty);
+                if !Self::resolve_cast(&expr, &expected) {
                     return Err(format!("Cannot cast from {expr} to {ty}"));
                 }
                 Ok(expected)
@@ -125,7 +126,7 @@ impl TypeChecker {
             AstExpr::Object(pairs) => {
                 let mut objects = HashMap::new();
                 for (k, v) in pairs {
-                    let ty = self.infer_type(v)?;
+                    let ty = Self::infer_type(v)?;
                     objects.insert(k.clone(), ty);
                 }
                 Ok(Type::Object(objects))
@@ -134,38 +135,37 @@ impl TypeChecker {
         }
     }
 
-    pub(crate) fn resolve_cast(&self, ty: &Type, expected: &Type) -> bool {
+    pub(crate) fn resolve_cast(ty: &Type, expected: &Type) -> bool {
         match (ty, expected) {
-            (Type::String, _) => true,
-            (Type::Int, Type::Float) | (Type::Float, Type::Int) => true,
+            (Type::Int, Type::Float) | (Type::Float, Type::Int) | (Type::String, _) => true,
             (a, b) => a == b,
         }
     }
 
-    pub(crate) fn string_to_type(&self, ty: &str) -> Result<Type, String> {
+    pub(crate) fn string_to_type(ty: &str) -> Type {
         match ty {
-            "str" => Ok(Type::String),
-            "int" => Ok(Type::Int),
-            "float" => Ok(Type::Float),
-            "bool" => Ok(Type::Bool),
-            _ => Ok(Type::Unknown),
+            "str" => Type::String,
+            "int" => Type::Int,
+            "float" => Type::Float,
+            "bool" => Type::Bool,
+            _ => Type::Unknown,
         }
     }
 
-    fn resolve_binary_op(&self, op: &AstBinaryOp, lhs: Type, rhs: Type) -> Result<Type, String> {
+    fn resolve_binary_op(op: &AstBinaryOp, lhs: &Type, rhs: &Type) -> Type {
         match op {
-            AstBinaryOp::And | AstBinaryOp::Or => self.unify_types(&lhs, &rhs),
-            AstBinaryOp::Eq | AstBinaryOp::Ne => Ok(Type::Bool),
+            AstBinaryOp::And | AstBinaryOp::Or => Self::unify_types(lhs, rhs),
+            AstBinaryOp::Eq | AstBinaryOp::Ne => Type::Bool,
         }
     }
 
-    fn resolve_unary_op(&self, op: &AstUnaryOp, _expr: &Type) -> Result<Type, String> {
+    fn resolve_unary_op(op: &AstUnaryOp, _expr: &Type) -> Type {
         match op {
-            AstUnaryOp::Not => Ok(Type::Bool),
+            AstUnaryOp::Not => Type::Bool,
         }
     }
 
-    fn is_valid_expression_type(&self, ty: &Type) -> bool {
+    fn is_valid_expression_type(ty: &Type) -> bool {
         match ty {
             Type::String => true,
             Type::Union(types) if types.iter().all(|t| matches!(t, Type::String)) => true,
@@ -173,11 +173,11 @@ impl TypeChecker {
         }
     }
 
-    fn unify_types(&self, a: &Type, b: &Type) -> Result<Type, String> {
+    fn unify_types(a: &Type, b: &Type) -> Type {
         if a == b {
-            Ok(a.clone())
+            a.clone()
         } else {
-            Ok(Type::Union(vec![a.clone(), b.clone()]))
+            Type::Union(vec![a.clone(), b.clone()])
         }
     }
 }

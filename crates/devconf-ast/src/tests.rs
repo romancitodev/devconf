@@ -19,7 +19,7 @@ fn test_template_parsing() {
                 @assign [PathSegment::Static("app".to_owned())], expr!(@unboxed @lit "rust".to_owned().into())
             }]
         ]]
-    )
+    );
 }
 
 #[test]
@@ -43,7 +43,7 @@ fn test_parse_template_and_use() {
                 @assign [PathSegment::Static("app".to_owned())], *expr!(@unquoted "rick".to_owned())
             }
         ]
-    )
+    );
 }
 
 #[test]
@@ -67,7 +67,7 @@ fn test_parse_template_with_interpolation() {
                 @assign [PathSegment::Static("rick".to_owned())], *expr!(@lit true.into())
             }
         ]
-    )
+    );
 }
 
 #[test]
@@ -91,7 +91,7 @@ fn test_parse_template_with_dot_notation() {
                 @assign [PathSegment::Static("app".to_owned()), PathSegment::Static("rick".to_owned())], *expr!(@lit true.into())
             }
         ]
-    )
+    );
 }
 
 #[test]
@@ -199,7 +199,7 @@ fn test_simple_assignment_formatted_integer() {
     assert_eq!(
         scope,
         scope![stmt! {
-            @assign [PathSegment::Static("version".to_owned())], expr!(@unboxed @lit 123456.into())
+            @assign [PathSegment::Static("version".to_owned())], expr!(@unboxed @lit 123_456.into())
         }]
     );
 }
@@ -304,7 +304,7 @@ fn test_assignment_and_interpolation() {
         scope,
         scope![stmt![@assign [PathSegment::Static("port".to_owned())],
                 expr![@inter expr!(@unboxed @ident "APP_PORT".to_owned())]]]
-    )
+    );
 }
 
 #[test]
@@ -315,7 +315,7 @@ fn test_paren() {
         scope,
         scope![stmt![@assign [PathSegment::Static("port".to_owned())],
                 expr!(@unboxed @lit 83.into())]]
-    )
+    );
 }
 
 #[test]
@@ -330,7 +330,7 @@ fn test_assignment_and_interpolation_with_type() {
         ).into(),
             "int".to_owned()
         )]]]
-    )
+    );
 }
 #[test]
 fn test_interpolation_with_expression() {
@@ -343,7 +343,7 @@ fn test_interpolation_with_expression() {
             expr![
             @bin expr!(@ident "APP_PORT".to_owned()), Or, expr!(@lit 8080.into())
             ]]]]
-    )
+    );
 }
 
 #[test]
@@ -362,7 +362,7 @@ fn test_complex_interpolation_with_expression() {
                 ]
             ]
         ]]
-    )
+    );
 }
 
 #[test]
@@ -386,7 +386,7 @@ fn test_dot_assignation() {
             ],
             expr!(@unboxed @lit "roman".to_owned().into())
         ]]
-    )
+    );
 }
 
 // #[ignore = "unimplemented!()"]
@@ -404,7 +404,7 @@ fn test_dot_assignation_with_interpolation() {
             ],
             expr!(@unboxed @lit "roman".to_owned().into())
         ]]
-    )
+    );
 }
 
 #[test]
@@ -429,7 +429,7 @@ fn test_valid_type_resolved_expresssion() {
             ],
             expr!(@unboxed @lit "roman".to_owned().into())
         ]]
-    )
+    );
 }
 
 #[test]
@@ -467,7 +467,7 @@ fn test_dot_assignation_with_literals() {
             ],
             expr!(@unboxed @lit "roman".to_owned().into())
         ]]
-    )
+    );
 }
 
 #[test]
@@ -492,7 +492,7 @@ fn test_dot_assignation_with_nested_fields() {
             ],
             expr!(@unboxed @lit true.into())
         ]]
-    )
+    );
 }
 
 #[test]
@@ -510,5 +510,5 @@ fn test_invalid_dot_assignation_with_dots() {
             ],
             expr!(@unboxed @lit "roman".to_owned().into())
         ]]
-    )
+    );
 }

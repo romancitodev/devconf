@@ -1,4 +1,4 @@
-use devconf_nodes::ast::*;
+use devconf_nodes::ast::AstExpr;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AstScope(pub Vec<AstStatement>);

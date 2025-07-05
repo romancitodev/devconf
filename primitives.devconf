@@ -2,7 +2,7 @@
 name: "my-app"
 foo: rick
 version: "1.0.0"
-debug: ${NODE_ENV:int == "debug" || RUST_ENV == "debug" && 1}
+debug: ${NODE_ENV:int == "debug" || RUST_ENV:str == "debug" && 1}
 
 app.port: ${PORT:int || 8080}
 app.database.host: "localhost"

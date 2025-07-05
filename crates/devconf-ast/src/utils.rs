@@ -142,15 +142,29 @@ pub(crate) fn expand_expr(expr: &AstExpr, substitutions: &HashMap<String, AstExp
             ty: ty.clone(),
         },
         AstExpr::Interpolation { expr } => expand_expr(expr, substitutions),
-        _ => expr.clone(),
+        AstExpr::FunctionCall { .. } => expr.clone(),
+    }
+}
+
+#[must_use]
+pub fn precedence_of(token: &Token) -> Option<(u8, AstBinaryOp)> {
+    match token {
+        T![Or] => Some((1, AstBinaryOp::Or)),
+        T![And] => Some((2, AstBinaryOp::And)),
+        T![Eq] => Some((3, AstBinaryOp::Eq)),
+        T![Ne] => Some((4, AstBinaryOp::Ne)),
+        _ => None,
     }
 }
 
 use std::collections::HashMap;
 
 pub use bin_op;
-use devconf_lexer::token::Literal;
-use devconf_nodes::ast::AstExpr;
+use devconf_lexer::{
+    T,
+    token::{Literal, Token},
+};
+use devconf_nodes::ast::{AstBinaryOp, AstExpr};
 pub use scope;
 pub use stmt;
 pub use unary_op;

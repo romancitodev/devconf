@@ -22,6 +22,8 @@ pub struct Lexer;
 
 impl Lexer {
     #[allow(clippy::should_implement_trait)]
+    /// # Errors
+    /// It return an error based on the `winnow` parse.
     pub fn from_str(input: &str) -> LexerResult<'_, VecDeque<SpannedToken>> {
         let mut input = SourceLexer::new(input);
         let mut tokens = VecDeque::<token::SpannedToken>::new();
@@ -31,6 +33,7 @@ impl Lexer {
         Ok(tokens)
     }
 
+    #[allow(clippy::too_many_lines)]
     fn next_token<'a>(
         tokens: &mut VecDeque<SpannedToken>,
         input: &mut SourceLexer<'a>,
@@ -207,12 +210,12 @@ impl Lexer {
             tokens.push_back(SpannedToken {
                 span,
                 token: Token::Literal(Literal::Float(clean.parse().unwrap())),
-            })
+            });
         } else {
             tokens.push_back(SpannedToken {
                 span,
                 token: Token::Literal(Literal::Integer(clean.parse().unwrap())),
-            })
+            });
         }
 
         eat_spaces(input)
@@ -251,7 +254,7 @@ impl Lexer {
                 &input.checkpoint(),
                 "numbers cannot have more than one decimal point",
             ));
-        };
+        }
 
         if !Self::is_valid_integer_part(parts[0]) {
             return Err(LexerError::from_input(input).add_context(
@@ -276,7 +279,7 @@ impl Lexer {
             }
         }
 
-        Ok(raw.replace("_", ""))
+        Ok(raw.replace('_', ""))
     }
 
     fn is_valid_decimal_part(part: &str) -> bool {
@@ -547,7 +550,7 @@ mod tests {
                 T![Colon],
                 lit!(true)
             ]
-        )
+        );
     }
 
     #[test]
@@ -559,7 +562,7 @@ mod tests {
         assert_eq!(
             Vec::from(tokens),
             &[ident!("hello"), T![Dot], lit!(42), T![Colon], lit!(true)]
-        )
+        );
     }
 
     #[test]
@@ -578,7 +581,7 @@ mod tests {
                 T![Colon],
                 lit!(true)
             ]
-        )
+        );
     }
 
     #[test]

@@ -26,23 +26,25 @@ pub struct PeekedToken<'i, 's> {
 }
 
 impl<'i> SourceAst<'i> {
+    #[must_use]
     pub fn new(base: &'i str, tokens: VecDeque<SpannedToken>) -> Self {
         Self {
             base,
             tokens,
             last_offset: 0,
             checker: TypeChecker,
-            macros: Default::default(),
+            macros: HashMap::default(),
         }
     }
 
+    #[must_use]
     pub fn with(&self, tokens: VecDeque<SpannedToken>) -> Self {
         Self {
             tokens,
             base: self.base,
             last_offset: self.last_offset,
             checker: TypeChecker,
-            macros: Default::default(),
+            macros: HashMap::default(),
         }
     }
 
@@ -117,8 +119,8 @@ impl<'i> SourceAst<'i> {
         }
     }
 
-    pub fn expect_token(&mut self, token: Token) -> SpannedToken {
-        self.expect_match(format!("{token:#?}"), |t| (t == token).then_some(t))
+    pub fn expect_token(&mut self, token: &Token) -> SpannedToken {
+        self.expect_match(format!("{token:#?}"), |t| (*t == *token).then_some(t))
     }
 
     pub fn error_in_place(&self, msg: impl fmt::Display + Clone) -> ! {
@@ -151,6 +153,8 @@ impl<'i> SourceAst<'i> {
         )
     }
 
+    /// # Panics
+    /// Only when it's called
     pub fn error_build(
         &self,
         span: Span,
@@ -168,6 +172,7 @@ impl<'i> SourceAst<'i> {
 }
 
 impl PeekedToken<'_, '_> {
+    #[must_use]
     pub fn accept(self) -> SpannedToken {
         self.token
     }

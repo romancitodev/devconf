@@ -12,7 +12,7 @@ use std::collections::{HashMap, VecDeque};
 use crate::utils::expand_expr;
 pub use config::DevConf;
 use devconf_lexer::lit;
-use devconf_lexer::token::{Literal, SpannedToken};
+use devconf_lexer::token::{Literal, Punctuation, SpannedToken};
 use devconf_lexer::{T, kw, token::Token};
 
 use devconf_tychecker::Context;
@@ -22,11 +22,12 @@ pub use value::Value;
 
 use crate::nodes::{AstStatement, PathSegment};
 use crate::source::SourceAst;
-use devconf_nodes::ast::*;
+use devconf_nodes::ast::{AstBinaryOp, AstExpr, AstUnaryOp};
 
 pub use nodes::AstScope;
 
 impl AstScope {
+    #[must_use]
     pub fn from_tokens(base: &str, tokens: VecDeque<SpannedToken>) -> Self {
         SourceAst::new(base, tokens).parse_scope(0)
     }
@@ -63,15 +64,15 @@ impl SourceAst<'_> {
                     let args_len = args.len();
                     match params_len.cmp(&args_len) {
                         std::cmp::Ordering::Greater => {
-                            if defaults.len() + args_len != params_len {
-                                self.error_in_place("Too many arguments")
-                            } else {
+                            if defaults.len() + args_len == params_len {
                                 args.extend(defaults.iter().map(|d| d.1.clone()));
+                            } else {
+                                self.error_in_place("Too many arguments")
                             }
                         }
                         std::cmp::Ordering::Less => self.error_in_place("Too few arguments"),
                         std::cmp::Ordering::Equal => {}
-                    };
+                    }
                     let args = params.iter().zip(args).collect::<Vec<_>>();
                     let expanded_nodes = self.expand_template(&body, args);
                     for node in expanded_nodes {
@@ -142,7 +143,9 @@ impl SourceAst<'_> {
                         .collect(),
                 }
             }
-            _ => self.error_in_place("Definition of macros inside macros isn't available"),
+            AstStatement::TemplateDefinition { .. } => {
+                self.error_in_place("Definition of macros inside macros isn't available")
+            }
         }
     }
 
@@ -170,8 +173,9 @@ impl SourceAst<'_> {
                 }
                 match expr {
                     AstExpr::Ident(l)
-                    | AstExpr::Literal(Literal::UnquotedString(l))
-                    | AstExpr::Literal(Literal::String(l)) => PathSegment::Static(l),
+                    | AstExpr::Literal(Literal::UnquotedString(l) | Literal::String(l)) => {
+                        PathSegment::Static(l)
+                    }
                     _ => self.error_in_place("invlaid expression"),
                 }
             }
@@ -211,7 +215,7 @@ impl SourceAst<'_> {
             let token = self.peek()?;
 
             match *token.token {
-                T![Identation] => continue,
+                T![Identation] => {} // the same as continue but clippy::pedantic relies.
                 T![Newline] => return Some(true),
                 _ => {
                     token.recover();
@@ -259,7 +263,7 @@ impl SourceAst<'_> {
                                     span,
                                     format!("Seems to be an invalid token ({literal:?})"),
                                 );
-                            };
+                            }
                             seen_dot = false;
                             AstExpr::Literal(literal.clone())
                         }
@@ -339,7 +343,7 @@ impl SourceAst<'_> {
             .expect("checked on the expect_match");
 
         // Expect opening parenthesis
-        self.expect_token(T![OpenParen]);
+        self.expect_token(&T![OpenParen]);
 
         let mut args = Vec::<AstExpr>::new();
         let mut expecting_comma = false;
@@ -348,11 +352,11 @@ impl SourceAst<'_> {
         while let Some(next) = self.peek() {
             match **next {
                 T![CloseParen] => {
-                    next.accept(); // consume the closing paren
+                    _ = next.accept(); // consume the closing paren
                     break;
                 }
                 T![Comma] if expecting_comma => {
-                    next.accept(); // consume the comma
+                    _ = next.accept(); // consume the comma
                     expecting_comma = false;
 
                     // Check for trailing comma
@@ -401,7 +405,7 @@ impl SourceAst<'_> {
             .into_ident()
             .expect("checked on the expect_match");
 
-        checkpoint.expect_token(T![OpenParen]);
+        checkpoint.expect_token(&T![OpenParen]);
         println!("here!");
         let mut params = vec![];
         let mut defaults = vec![];
@@ -419,7 +423,6 @@ impl SourceAst<'_> {
                 // the comma for separating terms
                 T![Comma] if !seen_comma => {
                     seen_comma = true;
-                    continue;
                 }
                 T![Comma] => {
                     let span = next.span;
@@ -437,7 +440,6 @@ impl SourceAst<'_> {
                         self.error_at(span, "trailling comma");
                     }
                     balanced_parens = true;
-                    continue;
                 }
                 T![CloseParen] => {
                     let span = next.span;
@@ -492,18 +494,18 @@ impl SourceAst<'_> {
 
     fn parse_if_stmt(&mut self, level: usize) -> AstStatement {
         let test = self.parse_expr().into();
-        self.expect_token(T![OpenBrace]);
+        self.expect_token(&T![OpenBrace]);
         let body = self.parse_scope(level + 1);
-        self.expect_token(T![CloseBrace]);
+        self.expect_token(&T![CloseBrace]);
         let otherwise = self.peek_stmt(level, |source, keyword| match keyword.token {
             kw!(Else) => {
-                source.expect_token(T![OpenBrace]);
+                source.expect_token(&T![OpenBrace]);
 
                 Some(source.parse_scope(level + 1))
             }
             _ => None,
         });
-        self.expect_token(T![CloseBrace]);
+        self.expect_token(&T![CloseBrace]);
         AstStatement::Conditional {
             test,
             body,
@@ -511,7 +513,7 @@ impl SourceAst<'_> {
         }
     }
 
-    fn precedence_of(&self, token: &Token) -> Option<(u8, AstBinaryOp)> {
+    fn precedence_of(token: &Token) -> Option<(u8, AstBinaryOp)> {
         match token {
             T![Or] => Some((1, AstBinaryOp::Or)),
             T![And] => Some((2, AstBinaryOp::And)),
@@ -526,7 +528,7 @@ impl SourceAst<'_> {
         // let mut left = checkpoint.parse_unary();
 
         while let Some(expr) = checkpoint.peek() {
-            if let Some((prec, op)) = self.precedence_of(&(expr).clone()) {
+            if let Some((prec, op)) = Self::precedence_of(&(expr).clone()) {
                 if prec < min {
                     expr.recover();
                     break;
@@ -669,7 +671,7 @@ impl SourceAst<'_> {
             }
             T![OpenParen] => {
                 let expr = self.parse_expr();
-                self.expect_token(T![CloseParen]);
+                self.expect_token(&T![CloseParen]);
                 expr
             }
             lit!(Null) => AstExpr::Literal(Literal::Null),
@@ -681,7 +683,7 @@ impl SourceAst<'_> {
     }
 
     fn parse_array(&mut self) -> AstExpr {
-        self.expect_token(T![OpenSquareBracket]);
+        self.expect_token(&T![OpenSquareBracket]);
         let mut elements = vec![];
 
         'parser: loop {
@@ -712,7 +714,7 @@ impl SourceAst<'_> {
                 match **token {
                     T![Comma] => {
                         println!("Found comma!");
-                        token.accept();
+                        _ = token.accept();
                     }
                     T![CloseSquareBracket] => {
                         token.recover();
@@ -731,12 +733,11 @@ impl SourceAst<'_> {
             }
         }
 
-        self.expect_token(T![CloseSquareBracket]);
+        self.expect_token(&T![CloseSquareBracket]);
         AstExpr::Array(elements)
     }
-
     fn parse_object(&mut self) -> AstExpr {
-        self.expect_token(T![OpenBrace]);
+        self.expect_token(&T![OpenBrace]);
         let mut pairs = vec![];
 
         while let Some(token) = self.clone().peek() {
@@ -750,14 +751,14 @@ impl SourceAst<'_> {
                     self.tokens.pop_front();
                     name
                 }
-                T![Newline] | T![Identation] => {
+                Token::Punctuation(Punctuation::Newline | Punctuation::Identation) => {
                     self.tokens.pop_front();
-                    continue; // skipping newlines
+                    continue;
                 }
-                _ => self.error_unexpected_token(token.accept()),
+                _ => self.error_unexpected_token(&token.accept()),
             };
 
-            self.expect_token(T![Colon]);
+            self.expect_token(&T![Colon]);
             let value = match self.parse_expr() {
                 AstExpr::Ident(id) => AstExpr::Literal(Literal::UnquotedString(id)),
                 ast => ast,
@@ -767,17 +768,16 @@ impl SourceAst<'_> {
 
             if let Some(token) = self.clone().peek() {
                 match **token {
-                    T![Comma] | T![Newline] => {
+                    Token::Punctuation(Punctuation::Comma | Punctuation::Newline) => {
                         self.tokens.pop_front();
-                        continue;
                     }
                     T![CloseBrace] => break,
-                    _ => self.error_unexpected_token(token.accept()),
+                    _ => self.error_unexpected_token(&token.accept()),
                 }
             }
         }
 
-        self.expect_token(T![CloseBrace]);
+        self.expect_token(&T![CloseBrace]);
 
         AstExpr::Object(pairs)
     }
@@ -785,8 +785,8 @@ impl SourceAst<'_> {
     fn parse_interpolation(&mut self) -> AstExpr {
         println!("in interpolation: {self:#?}");
         let mut peek = self.clone();
-        peek.expect_token(T![Dollar]);
-        peek.expect_token(T![OpenBrace]);
+        peek.expect_token(&T![Dollar]);
+        peek.expect_token(&T![OpenBrace]);
 
         // Parse the base expression (identifier first)
         let mut expr = peek.parse_primary_expr_for_interpolation();
@@ -827,7 +827,7 @@ impl SourceAst<'_> {
         expr = peek.parse_binary_continuation(expr);
         println!("got expr pepe: ${expr:#?}");
 
-        peek.expect_token(T![CloseBrace]);
+        peek.expect_token(&T![CloseBrace]);
         *self = peek;
 
         AstExpr::Interpolation {
@@ -840,18 +840,12 @@ impl SourceAst<'_> {
         let token = self.peek_expect();
 
         match **token {
-            Token::Ident(ref name) => {
-                let name = name.clone();
-                AstExpr::Ident(name)
-            }
-            Token::Literal(ref lit) => {
-                let lit = lit.clone();
-                AstExpr::Literal(lit)
-            }
+            Token::Ident(ref name) => AstExpr::Ident(name.clone()),
+            Token::Literal(ref lit) => AstExpr::Literal(lit.clone()),
             T![OpenParen] => {
                 self.tokens.pop_front();
                 let expr = self.parse_expr();
-                self.expect_token(T![CloseParen]);
+                self.expect_token(&T![CloseParen]);
                 expr
             }
             _ => {
@@ -869,7 +863,7 @@ impl SourceAst<'_> {
         self.parse_with_precedence(0, left)
     }
 
-    fn error_unexpected_token(&mut self, token: SpannedToken) -> ! {
+    fn error_unexpected_token(&mut self, token: &SpannedToken) -> ! {
         self.error_at(token.span, format!("Unexpected token: {:?}", token.token));
     }
 }

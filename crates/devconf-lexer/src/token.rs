@@ -30,6 +30,7 @@ pub trait IntoSpan<V> {
 impl Span {
     pub const ZERO: Self = Self { from: 0, to: 0 };
 
+    #[must_use]
     pub const fn char(offset: usize) -> Self {
         Self {
             from: offset,
@@ -60,10 +61,12 @@ pub struct SpannedToken {
 }
 
 impl SpannedToken {
+    #[must_use]
     pub fn new(span: Span, token: Token) -> Self {
         Self { span, token }
     }
 
+    #[must_use]
     pub fn split(&self) -> (Span, Token) {
         (self.span, self.token.clone())
     }
@@ -99,6 +102,7 @@ pub enum Token {
 }
 
 impl Token {
+    #[must_use]
     pub fn into_ident(&self) -> Option<String> {
         if let Self::Ident(ident) = self {
             Some(ident.clone())

@@ -10,6 +10,7 @@ impl DevConf {
         self.properties.push(Property { key, value });
     }
 
+    #[must_use]
     pub fn get_value(&self, key: &str) -> Option<&Value> {
         self.properties
             .iter()

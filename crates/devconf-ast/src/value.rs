@@ -12,6 +12,7 @@ pub enum Value {
 }
 
 impl Value {
+    #[must_use]
     pub fn type_name(&self) -> &'static str {
         match self {
             Value::String(_) => "string",
@@ -24,6 +25,7 @@ impl Value {
         }
     }
 
+    #[must_use]
     pub fn is_primitive(&self) -> bool {
         matches!(
             self,
@@ -35,6 +37,8 @@ impl Value {
         )
     }
 
+    #[must_use]
+    #[allow(clippy::cast_precision_loss)]
     pub fn as_number(&self) -> Option<f64> {
         match self {
             Self::Integer(n) => Some(*n as f64),

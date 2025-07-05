@@ -1,5 +1,7 @@
 use winnow::{Parser, stream::AsChar, token::take_while};
 
+/// # Errors
+/// The function return an error based on the `winnow` parse.
 pub fn eat_spaces<'i>(input: &mut SourceLexer<'i>) -> LexerResult<'i> {
     take_while(0.., |c: char| c.is_space() || c == '\r').parse_next(input)?;
     Ok(())

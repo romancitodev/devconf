@@ -9,10 +9,10 @@ fn main() {
 
     let tokens = Lexer::from_str(&path);
     // .inspect(|tokens| println!("<tokens>: {tokens:#?}"))
-    // .inspect_err(|err| println!("<error>: {err}"));
+    // .inspect_err(|err| println!("<error>: {err}"));x
 
     _ = AstScope::from_tokens(&path, tokens.unwrap())
         .0
         .iter()
-        .inspect(|ast| println!("<ast>: {ast:#?}"))
+        .inspect(|ast| println!("<ast>: {ast:#?}"));
 }
