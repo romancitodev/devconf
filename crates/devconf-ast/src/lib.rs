@@ -9,6 +9,7 @@ pub mod value;
 
 use std::collections::{HashMap, VecDeque};
 
+use crate::utils::expand_expr;
 pub use config::DevConf;
 use devconf_lexer::lit;
 use devconf_lexer::token::{Literal, SpannedToken};
@@ -17,7 +18,6 @@ use devconf_lexer::{T, kw, token::Token};
 use devconf_tychecker::Context;
 
 pub use property::Property;
-use utils::expand_expr;
 pub use value::Value;
 
 use crate::nodes::{AstStatement, PathSegment};
@@ -521,22 +521,25 @@ impl SourceAst<'_> {
         }
     }
 
-    fn parse_with_precedence(&mut self, min: u8) -> AstExpr {
+    fn parse_with_precedence(&mut self, min: u8, mut left: AstExpr) -> AstExpr {
         let mut checkpoint = self.clone();
-        let mut left = checkpoint.parse_unary();
+        // let mut left = checkpoint.parse_unary();
 
         while let Some(expr) = checkpoint.peek() {
             if let Some((prec, op)) = self.precedence_of(&(expr).clone()) {
                 if prec < min {
+                    expr.recover();
                     break;
                 }
-                let right = self.parse_with_precedence(min + 1);
+                let right = checkpoint.parse_unary();
+                let right = checkpoint.parse_with_precedence(prec + 1, right);
                 left = AstExpr::BinaryExpr {
                     op,
                     left: Box::new(left),
                     right: Box::new(right),
                 }
             } else {
+                expr.recover();
                 break;
             }
         }
@@ -864,8 +867,9 @@ impl SourceAst<'_> {
     // Helper function to continue parsing binary expressions
     fn parse_binary_continuation(&mut self, left: AstExpr) -> AstExpr {
         // TODO Check if this would work.
-        // self.parse_with_precedence(0)
-        self.parse_logical_or_continuation(left)
+        println!("parse binary continuation: {left:#?}");
+        self.parse_with_precedence(0, left)
+        // self.parse_logical_or_continuation(left)
     }
 
     fn parse_logical_or_continuation(&mut self, mut expr: AstExpr) -> AstExpr {
