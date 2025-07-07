@@ -158,14 +158,19 @@ fn test_simple_assignment_unquoted_string() {
 
 #[test]
 fn test_simple_expr() {
-    let input = "version: \'1.0.0'\ndebug: ${NODE_ENV == debug}";
-    let _scope = create_scope(input);
-    // assert_eq!(
-    //     scope,
-    //     scope![stmt! {
-    //         @assign [PathSegment::Static("app".to_owned().into())], expr!(@unboxed @unquoted "rust".to_owned().into())
-    //     }]
-    // );
+    let input = "debug: ${NODE_ENV == debug}";
+    let scope = create_scope(input);
+    assert_eq!(
+        scope,
+        scope![stmt! {
+        @assign
+        [PathSegment::Static("debug".to_owned())],
+        expr! [
+            @inter expr![
+            @bin expr!(@ident "NODE_ENV".to_owned()), Eq, expr!(@ident "debug".to_owned())
+            ]]
+        }]
+    );
 }
 
 #[test]
