@@ -7,6 +7,7 @@ pub mod tests;
 pub mod utils;
 pub mod value;
 
+use crate::source::Ctx;
 use std::collections::{HashMap, VecDeque};
 
 use crate::utils::expand_expr;
@@ -176,7 +177,7 @@ impl SourceAst<'_> {
                     | AstExpr::Literal(Literal::UnquotedString(l) | Literal::String(l)) => {
                         PathSegment::Static(l)
                     }
-                    _ => self.error_in_place("invlaid expression"),
+                    _ => self.error_in_place("invalid expression"),
                 }
             }
         }
@@ -393,6 +394,42 @@ impl SourceAst<'_> {
         }
     }
 
+    fn parse_type_hint(&mut self) -> Option<String> {
+        let mut checkpoint = self.clone();
+        println!("parse type hint : {self:#?}");
+        if let Some(token) = checkpoint.peek() {
+            dbg!(&token.token);
+            if matches!(**token, T![Colon]) {
+                let colon_span = token.span;
+                match checkpoint.peek() {
+                    Some(next_token) if matches!(**next_token, Token::Ident(_)) => {
+                        if let Token::Ident(ref type_name) = **next_token {
+                            let type_name = type_name.clone();
+                            dbg!(&type_name);
+                            *self = checkpoint;
+                            return Some(type_name.clone());
+                        }
+                        next_token.recover();
+                    }
+                    Some(next_token) if matches!(**next_token, T![CloseBrace]) => {
+                        self.error_at(colon_span, "Received :, so there was expected a type hint, but instead no one was provided\n if you don't want to add a type hint, just close the interpolation".to_owned());
+                    }
+                    None => {
+                        self.error_at(colon_span, "Received :, so there was expected a type hint, but instead no one was provided\n if you don't want to add a type hint, just close the interpolation".to_owned());
+                    }
+                    Some(next_token) => {
+                        self.error_at(next_token.span, format!("Received :, so there was expected a type hint, but instead found: '{}'\n if you don't want to add a type hint, just close the interpolation", **next_token));
+                    }
+                }
+            } else {
+                token.recover();
+            }
+        }
+
+        *self = checkpoint;
+        None
+    }
+
     fn parse_template_definition(&mut self, level: usize) -> AstStatement {
         // This is the entry point of the template definition.
         // We should parse first the arguments.
@@ -524,17 +561,15 @@ impl SourceAst<'_> {
     }
 
     fn parse_with_precedence(&mut self, min: u8, mut left: AstExpr) -> AstExpr {
-        let mut checkpoint = self.clone();
-        // let mut left = checkpoint.parse_unary();
-
-        while let Some(expr) = checkpoint.peek() {
+        while let Some(expr) = self.peek() {
+            println!("parse precedence {:#?}", expr.token);
             if let Some((prec, op)) = Self::precedence_of(&(expr).clone()) {
                 if prec < min {
                     expr.recover();
                     break;
                 }
-                let right = checkpoint.parse_unary();
-                let right = checkpoint.parse_with_precedence(prec + 1, right);
+                let right = self.parse_unary();
+                let right = self.parse_with_precedence(prec + 1, right);
                 left = AstExpr::BinaryExpr {
                     op,
                     left: Box::new(left),
@@ -545,83 +580,13 @@ impl SourceAst<'_> {
                 break;
             }
         }
-        *self = checkpoint;
         left
     }
 
     // Main expression parser with precedence
     fn parse_expr(&mut self) -> AstExpr {
-        self.parse_logical_or()
-    }
-
-    fn parse_logical_or(&mut self) -> AstExpr {
-        let mut expr = self.parse_logical_and();
-        while let Some(token) = self.peek() {
-            match **token {
-                T![Or] => {
-                    self.tokens.pop_front();
-                    let right = self.parse_logical_and();
-                    expr = AstExpr::BinaryExpr {
-                        op: AstBinaryOp::Or,
-                        left: Box::new(expr),
-                        right: Box::new(right),
-                    };
-                }
-                _ => {
-                    token.recover();
-                    break;
-                }
-            }
-        }
-        expr
-    }
-
-    fn parse_logical_and(&mut self) -> AstExpr {
-        let mut expr = self.parse_equality();
-
-        while let Some(token) = self.peek() {
-            match **token {
-                T![And] => {
-                    let right = self.parse_equality();
-                    expr = AstExpr::BinaryExpr {
-                        op: AstBinaryOp::And,
-                        left: Box::new(expr),
-                        right: Box::new(right),
-                    };
-                }
-                _ => {
-                    token.recover();
-                    break;
-                }
-            }
-        }
-        expr
-    }
-
-    fn parse_equality(&mut self) -> AstExpr {
-        let mut expr = self.parse_unary();
-
-        println!("expr : {expr:#?}");
-
-        while let Some(token) = self.peek() {
-            println!("parse_eq: {}", **token);
-            let op = match **token {
-                T![Eq] => AstBinaryOp::Eq,
-                T![Ne] => AstBinaryOp::Ne,
-                _ => {
-                    token.recover();
-                    break;
-                }
-            };
-
-            let right = self.parse_unary();
-            expr = AstExpr::BinaryExpr {
-                op,
-                left: Box::new(expr),
-                right: Box::new(right),
-            };
-        }
-        expr
+        let left = self.parse_unary();
+        self.parse_with_precedence(0, left)
     }
 
     fn parse_unary(&mut self) -> AstExpr {
@@ -643,12 +608,8 @@ impl SourceAst<'_> {
     }
 
     fn parse_primary(&mut self) -> AstExpr {
-        println!("parsing primary");
         let token = self.peek_expect();
-
-        println!("parse_primary: token = {token:#?}");
-
-        match **token {
+        let expr = match **token {
             Token::Ident(ref name) => {
                 let name = name.clone();
                 AstExpr::Ident(name)
@@ -679,6 +640,17 @@ impl SourceAst<'_> {
                 let token = token.accept();
                 self.error_at(token.span, format!("Unexpected token: {:?}", token.token));
             }
+        };
+
+        if let Ctx::Expression = self.actual_ctx
+            && let Some(ty) = self.parse_type_hint()
+        {
+            AstExpr::Cast {
+                expr: expr.into(),
+                ty,
+            }
+        } else {
+            expr
         }
     }
 
@@ -706,14 +678,10 @@ impl SourceAst<'_> {
             };
             elements.push(expr);
 
-            println!("array: {elements:#?}");
-
             // Check what follows
             if let Some(token) = self.peek() {
-                println!("Next token: {token:#?}");
                 match **token {
                     T![Comma] => {
-                        println!("Found comma!");
                         _ = token.accept();
                     }
                     T![CloseSquareBracket] => {
@@ -736,6 +704,7 @@ impl SourceAst<'_> {
         self.expect_token(&T![CloseSquareBracket]);
         AstExpr::Array(elements)
     }
+
     fn parse_object(&mut self) -> AstExpr {
         self.expect_token(&T![OpenBrace]);
         let mut pairs = vec![];
@@ -783,52 +752,27 @@ impl SourceAst<'_> {
     }
 
     fn parse_interpolation(&mut self) -> AstExpr {
+        self.actual_ctx = Ctx::Expression;
         println!("in interpolation: {self:#?}");
-        let mut peek = self.clone();
-        peek.expect_token(&T![Dollar]);
-        peek.expect_token(&T![OpenBrace]);
+        // let mut peek = self.clone();
+        self.expect_token(&T![Dollar]);
+        self.expect_token(&T![OpenBrace]);
 
         // Parse the base expression (identifier first)
-        let mut expr = peek.parse_primary_expr_for_interpolation();
-        // Check for optional type cast
-        if let Some(token) = peek.peek() {
-            if matches!(**token, T![Colon]) {
-                let colon_span = token.span;
-
-                match peek.tokens.front() {
-                    Some(next_token) if matches!(**next_token, Token::Ident(_)) => {
-                        if let Token::Ident(ref type_name) = **next_token {
-                            let type_name = type_name.clone();
-                            peek.tokens.pop_front(); // Consume the type token
-
-                            // Wrap the expression in a Cast
-                            expr = AstExpr::Cast {
-                                expr: Box::new(expr),
-                                ty: type_name,
-                            };
-                        }
-                    }
-
-                    Some(next_token) if matches!(**next_token, T![CloseBrace]) => {
-                        peek.error_at(colon_span, "Received :, so there was expected a type hint, but instead no one was provided\n if you don't want to add a type hint, just close the interpolation".to_string());
-                    }
-                    None => {
-                        peek.error_at(colon_span, "Received :, so there was expected a type hint, but instead no one was provided\n if you don't want to add a type hint, just close the interpolation".to_string());
-                    }
-                    Some(next_token) => {
-                        peek.error_at(next_token.span, format!("Received :, so there was expected a type hint, but instead found: '{}'\n if you don't want to add a type hint, just close the interpolation", **next_token));
-                    }
-                }
-            } else {
-                token.recover();
-            }
+        let mut expr = self.parse_primary_expr_for_interpolation();
+        if let Some(ty) = self.parse_type_hint() {
+            expr = AstExpr::Cast {
+                expr: expr.into(),
+                ty,
+            };
         }
-        println!("after expr pepe {expr:#?}");
-        expr = peek.parse_binary_continuation(expr);
-        println!("got expr pepe: ${expr:#?}");
 
-        peek.expect_token(&T![CloseBrace]);
-        *self = peek;
+        // println!("after expr pepe {expr:#?}");
+        expr = self.parse_binary_continuation(expr);
+        // println!("got expr pepe: ${expr:#?}");
+
+        self.expect_token(&T![CloseBrace]);
+        self.actual_ctx = Ctx::Statement;
 
         AstExpr::Interpolation {
             expr: Box::new(expr),

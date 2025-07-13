@@ -4,10 +4,16 @@ use std::ops;
 
 use ariadne::{Color, Label, Report, ReportBuilder, ReportKind, Source};
 
+use crate::nodes::MacroDefinition;
 use devconf_lexer::token::{Span, SpannedToken, Token};
 use devconf_tychecker::TypeChecker;
 
-use crate::nodes::MacroDefinition;
+#[derive(Debug, Default, Clone)]
+pub enum Ctx {
+    #[default]
+    Statement,
+    Expression,
+}
 
 #[derive(Clone, Debug)]
 pub struct SourceAst<'i> {
@@ -16,6 +22,7 @@ pub struct SourceAst<'i> {
     pub tokens: VecDeque<SpannedToken>,
     pub checker: TypeChecker,
     pub macros: HashMap<String, MacroDefinition>, // we have the `MacroDefinition there`
+    pub actual_ctx: Ctx,
 }
 
 #[derive(Debug)]
@@ -34,6 +41,7 @@ impl<'i> SourceAst<'i> {
             last_offset: 0,
             checker: TypeChecker,
             macros: HashMap::default(),
+            actual_ctx: Ctx::Statement,
         }
     }
 
@@ -45,6 +53,7 @@ impl<'i> SourceAst<'i> {
             last_offset: self.last_offset,
             checker: TypeChecker,
             macros: HashMap::default(),
+            actual_ctx: Ctx::Statement,
         }
     }
 
