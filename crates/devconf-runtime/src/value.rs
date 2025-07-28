@@ -1,4 +1,4 @@
-use crate::Property;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
@@ -8,41 +8,48 @@ pub enum Value {
     Boolean(bool),
     Null,
     Array(Vec<Value>),
-    Object(Box<Property>),
+    Object(HashMap<String, Value>),
 }
 
 impl Value {
     #[must_use]
-    pub fn type_name(&self) -> &'static str {
+    pub fn as_bool(&self) -> bool {
         match self {
-            Value::String(_) => "string",
-            Value::Integer(_) => "integer",
-            Value::Float(_) => "float",
-            Value::Boolean(_) => "boolean",
-            Value::Null => "null",
-            Value::Array(_) => "array",
-            Value::Object(_) => "object",
+            Self::Integer(n) => *n != 0,
+            Self::Float(f) => *f != 0.0,
+            Self::Boolean(b) => *b,
+            Self::String(s) => !s.is_empty(),
+            Self::Array(arr) => !arr.is_empty(),
+            Self::Object(obj) => !obj.is_empty(),
+            Self::Null => false,
         }
     }
 
     #[must_use]
-    pub fn is_primitive(&self) -> bool {
-        matches!(
-            self,
-            Value::String(_)
-                | Value::Integer(_)
-                | Value::Float(_)
-                | Value::Boolean(_)
-                | Value::Null
-        )
-    }
-
-    #[must_use]
     #[allow(clippy::cast_precision_loss)]
-    pub fn as_number(&self) -> Option<f64> {
+    pub fn as_float(&self) -> Option<f64> {
         match self {
             Self::Integer(n) => Some(*n as f64),
             Self::Float(f) => Some(*f),
+            _ => None,
+        }
+    }
+
+    #[must_use]
+    pub fn as_str(&self) -> Option<String> {
+        if matches!(self, Self::Object(_) | Self::Array(_) | Self::Null) {
+            None
+        } else {
+            Some(format!("{self}"))
+        }
+    }
+
+    #[must_use]
+    #[allow(clippy::cast_possible_truncation)]
+    pub fn as_int(&self) -> Option<i64> {
+        match self {
+            Self::Integer(n) => Some(*n),
+            Self::Float(f) => Some(*f as i64),
             _ => None,
         }
     }
@@ -68,7 +75,12 @@ impl std::fmt::Display for Value {
             }
             Value::Object(obj) => {
                 write!(f, "{{")?;
-                write!(f, "{}: {}", obj.key, obj.value)?;
+                for (i, (key, value)) in obj.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{key}: {value}")?;
+                }
                 write!(f, "}}")
             }
         }

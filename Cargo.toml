@@ -22,3 +22,6 @@ ariadne = "0.5.1"
 [dependencies]
 devconf-lexer = { path = "crates/devconf-lexer" }
 devconf-ast = { path = "crates/devconf-ast" }
+devconf-runtime = { path = "crates/devconf-runtime" }
+serde = { version = "1.0", features = ["derive"] }
+thiserror.workspace = true

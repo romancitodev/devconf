@@ -7,7 +7,7 @@ activated: true
 # the topics for the AI
 topics: [metrics, analytics, rust]
 app: {
-  config: true
+	config: true
 }
 app.name: Project
 app.debug: ${NODE_ENV == "debug"}
@@ -15,11 +15,9 @@ app.debug: ${NODE_ENV == "debug"}
 app.port: ${APP_PORT:int || 8080}
 
 @template microservice(name, port, database=null):
-  services.${name}.port: ${port}
-  services.${name}.health_check: "/health"
-  services.${name}.metrics: "/metrics"
-  @if database != null:
-    services.${name}.database: ${database}
+	services.${name}.port: ${port}
+	services.${name}.health_check: "/health"
+	services.${name}.metrics: "/metrics"
 
 # Define services using dot notation
 @use microservice("user-service", 8001, "users_db")
@@ -27,7 +25,7 @@ app.port: ${APP_PORT:int || 8080}
 @use microservice("notification-service", 8003)
 
 # Additional service-specific config
-services.user-service.cache.enabled: true
-services.user-service.cache.ttl: 300
-services.order-service.queue.type: "redis"
-services.order-service.queue.url: ${REDIS_URL}
+services."user-service".cache.enabled: true
+services."user-service".cache.ttl: 300
+services."order-service".queue.type: "redis"
+services."order-service".queue.url: ${REDIS_URL}

@@ -1,25 +1,18 @@
-pub mod config;
 pub mod nodes;
-pub mod property;
 pub mod source;
 #[cfg(test)]
 pub mod tests;
 pub mod utils;
-pub mod value;
 
 use crate::source::Ctx;
 use std::collections::{HashMap, VecDeque};
 
 use crate::utils::expand_expr;
-pub use config::DevConf;
 use devconf_lexer::lit;
 use devconf_lexer::token::{Literal, Punctuation, SpannedToken};
 use devconf_lexer::{T, kw, token::Token};
 
 use devconf_tychecker::Context;
-
-pub use property::Property;
-pub use value::Value;
 
 use crate::nodes::{AstStatement, PathSegment};
 use crate::source::SourceAst;
@@ -46,7 +39,6 @@ impl SourceAst<'_> {
                 continue;
             }
             match stmt {
-                AstStatement::Comment => continue,
                 ref s @ AstStatement::TemplateDefinition { ref name, .. } => {
                     self.macros.insert(name.clone(), s.clone().into());
                     nodes.push(s.clone());
@@ -82,7 +74,6 @@ impl SourceAst<'_> {
                 }
                 s => nodes.push(s),
             }
-            println!("{nodes:#?}");
         }
         AstScope(nodes)
     }
@@ -246,7 +237,7 @@ impl SourceAst<'_> {
         let mut checkpoint = self.clone();
         let first = self.peek_expect();
 
-        println!("parse_statement: token = {first:#?}");
+        // println!("parse_statement: token = {first:#?}");
 
         match **first {
             Token::Comment(_) => AstStatement::Comment,
@@ -396,16 +387,16 @@ impl SourceAst<'_> {
 
     fn parse_type_hint(&mut self) -> Option<String> {
         let mut checkpoint = self.clone();
-        println!("parse type hint : {self:#?}");
+        // println!("parse type hint : {self:#?}");
         if let Some(token) = checkpoint.peek() {
-            dbg!(&token.token);
+            // dbg!(&token.token);
             if matches!(**token, T![Colon]) {
                 let colon_span = token.span;
                 match checkpoint.peek() {
                     Some(next_token) if matches!(**next_token, Token::Ident(_)) => {
                         if let Token::Ident(ref type_name) = **next_token {
                             let type_name = type_name.clone();
-                            dbg!(&type_name);
+                            // dbg!(&type_name);
                             *self = checkpoint;
                             return Some(type_name.clone());
                         }
@@ -443,7 +434,7 @@ impl SourceAst<'_> {
             .expect("checked on the expect_match");
 
         checkpoint.expect_token(&T![OpenParen]);
-        println!("here!");
+        // println!("here!");
         let mut params = vec![];
         let mut defaults = vec![];
         let mut seen_comma = false;
@@ -484,7 +475,7 @@ impl SourceAst<'_> {
                 }
                 T![Colon] => break,
                 _ => {
-                    println!("nigga");
+                    // println!("nigga");
                     unimplemented!()
                 }
             }
@@ -497,7 +488,7 @@ impl SourceAst<'_> {
         }
 
         *self = checkpoint;
-        println!("good bye!");
+        // println!("good bye!");
         AstStatement::TemplateDefinition {
             name: template_name,
             params,
@@ -562,7 +553,7 @@ impl SourceAst<'_> {
 
     fn parse_with_precedence(&mut self, min: u8, mut left: AstExpr) -> AstExpr {
         while let Some(expr) = self.peek() {
-            println!("parse precedence {:#?}", expr.token);
+            // println!("parse precedence {:#?}", expr.token);
             if let Some((prec, op)) = Self::precedence_of(&(expr).clone()) {
                 if prec < min {
                     expr.recover();
@@ -660,7 +651,7 @@ impl SourceAst<'_> {
 
         'parser: loop {
             if let Some(token) = self.peek() {
-                println!("Found next token: {token:#?}");
+                // println!("Found next token: {token:#?}");
                 if matches!(**token, T![CloseSquareBracket]) {
                     token.recover();
                     break 'parser;
@@ -753,7 +744,7 @@ impl SourceAst<'_> {
 
     fn parse_interpolation(&mut self) -> AstExpr {
         self.actual_ctx = Ctx::Expression;
-        println!("in interpolation: {self:#?}");
+        // println!("in interpolation: {self:#?}");
         // let mut peek = self.clone();
         self.expect_token(&T![Dollar]);
         self.expect_token(&T![OpenBrace]);
@@ -767,9 +758,9 @@ impl SourceAst<'_> {
             };
         }
 
-        // println!("after expr pepe {expr:#?}");
+        // // println!("after expr pepe {expr:#?}");
         expr = self.parse_binary_continuation(expr);
-        // println!("got expr pepe: ${expr:#?}");
+        // // println!("got expr pepe: ${expr:#?}");
 
         self.expect_token(&T![CloseBrace]);
         self.actual_ctx = Ctx::Statement;
