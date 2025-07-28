@@ -1,0 +1,4 @@
+@if ${NODE_ENV} == "production":
+   app.mode: "Production Mode"
+@else:
+   app.mode: "Development Mode"

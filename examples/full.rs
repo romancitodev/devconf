@@ -35,6 +35,7 @@ struct Services {
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
 struct Service {
     port: u32,
+    database: Option<String>,
     health_check: String,
     metrics: String,
     cache: Option<Cache>,

@@ -280,7 +280,7 @@ impl SourceAst<'_> {
                             seen_dot = true;
                             continue;
                         }
-                        _ => panic!(),
+                        expr => panic!("Unexpected expression: {expr:#?}"),
                     };
 
                     let node = match node {
@@ -311,7 +311,7 @@ impl SourceAst<'_> {
             }
             kw!(Template) => self.parse_template_definition(level),
             kw!(Use) => self.parse_template_call(),
-            kw!(If) => checkpoint.parse_if_stmt(level),
+            kw!(If) => self.parse_if_stmt(level),
             T![Bang] | Token::Literal(_) => {
                 AstStatement::Expression(checkpoint.parse_expr().into())
             }
@@ -475,7 +475,6 @@ impl SourceAst<'_> {
                 }
                 T![Colon] => break,
                 _ => {
-                    // println!("nigga");
                     unimplemented!()
                 }
             }
@@ -522,18 +521,18 @@ impl SourceAst<'_> {
 
     fn parse_if_stmt(&mut self, level: usize) -> AstStatement {
         let test = self.parse_expr().into();
-        self.expect_token(&T![OpenBrace]);
+        self.expect_token(&T![Colon]);
         let body = self.parse_scope(level + 1);
-        self.expect_token(&T![CloseBrace]);
+        // self.expect_token(&T![CloseBrace]);
         let otherwise = self.peek_stmt(level, |source, keyword| match keyword.token {
             kw!(Else) => {
-                source.expect_token(&T![OpenBrace]);
+                source.expect_token(&T![Colon]);
 
                 Some(source.parse_scope(level + 1))
             }
             _ => None,
         });
-        self.expect_token(&T![CloseBrace]);
+        // self.expect_token(&T![CloseBrace]);
         AstStatement::Conditional {
             test,
             body,

@@ -129,7 +129,11 @@ impl<'i> SourceAst<'i> {
     }
 
     pub fn expect_token(&mut self, token: &Token) -> SpannedToken {
-        self.expect_match(format!("{token:#?}"), |t| (*t == *token).then_some(t))
+        let mut checkpoint = self.clone();
+        let fetched = self.peek_expect().token;
+        checkpoint.expect_match(format!("{token:#?} but got {fetched:#?}"), |t| {
+            (*t == *token).then_some(t)
+        })
     }
 
     pub fn error_in_place(&self, msg: impl fmt::Display + Clone) -> ! {

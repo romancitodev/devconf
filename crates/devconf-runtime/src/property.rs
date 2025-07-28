@@ -199,7 +199,8 @@ impl Table {
                         panic!("Conditional 'otherwise' body is empty");
                     }
                 } else {
-                    panic!("Conditional did not match and has no 'otherwise'");
+                    // do nothing
+                    ("".to_string(), Value::Null)
                 }
             }
             _ => unreachable!(),

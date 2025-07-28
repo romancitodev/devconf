@@ -18,6 +18,8 @@ app.port: ${APP_PORT:int || 8080}
 	services.${name}.port: ${port}
 	services.${name}.health_check: "/health"
 	services.${name}.metrics: "/metrics"
+	@if ${database} != null:
+		services.${name}.database: ${database}
 
 # Define services using dot notation
 @use microservice("user-service", 8001, "users_db")

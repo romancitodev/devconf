@@ -166,15 +166,30 @@ app: {
 - [x] Array and object parsing
 - [x] Environment variable interpolation
 - [x] Dot notation
-- [x] Template system (planned)
-- [ ] Conditional expressions (in progress)
+- [x] Template system
+- [x] Conditional expressions
+
+### Runtime ✅
+- [x] Property table creation
+- [x] Nested property handling
+- [x] Object literal flattening
+- [x] Array and primitive value support
+- [x] Environment variable evaluation
+- [x] Template expansion
+- [x] Conditional logic evaluation
+
+### Type Checker ✅
+- [x] Basic type validation
+- [x] Complex nested expressions
+- [x] Error reporting
+
 
 ## 🚧 Roadmap
 
 - [x] Complete dot notation support
-- [ ] Conditional logic (`@if` statements)
+- [x] Conditional logic (`@if` statements)
 - [x] Template system implementation
-- [ ] Expression evaluation
+- [x] Expression evaluation
 - [ ] CLI tool for validation and conversion
 - [ ] IDE extensions (VS Code, Vim, etc.)
 - [ ] Integration libraries for popular frameworks
