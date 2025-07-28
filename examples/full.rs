@@ -36,13 +36,8 @@ struct Services {
 struct Service {
     port: u32,
     health_check: String,
-    #[serde(default)]
-    metrics: Option<String>,
-    #[serde(default)]
-    database: Option<String>,
-    #[serde(default)]
+    metrics: String,
     cache: Option<Cache>,
-    #[serde(default)]
     queue: Option<Queue>,
 }
 
