@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use hashbrown::HashMap;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {

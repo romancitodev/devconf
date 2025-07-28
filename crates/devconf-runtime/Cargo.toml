@@ -7,3 +7,4 @@ edition = "2024"
 devconf-ast.path = "../devconf-ast"
 devconf-nodes.path = "../devconf-nodes"
 devconf-lexer.path = "../devconf-lexer"
+hashbrown.workspace = true

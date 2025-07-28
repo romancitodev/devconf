@@ -1,4 +1,5 @@
-use std::{collections::HashMap, env};
+use hashbrown::HashMap;
+use std::env;
 
 use devconf_ast::{AstScope, nodes::AstStatement};
 use devconf_lexer::token::Literal;

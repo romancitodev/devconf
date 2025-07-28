@@ -6,11 +6,11 @@
 
 use crate::error::{Error, Result};
 use devconf_runtime::{Value, parse_from_str};
+use hashbrown::HashMap;
 use serde::{
     Deserialize,
     de::{self, IntoDeserializer},
 };
-use std::collections::HashMap;
 
 pub struct Deserializer {
     value: Value,
@@ -423,7 +423,7 @@ impl<'de> de::SeqAccess<'de> for SeqDeserializer {
 
 // Map deserializer for objects
 struct MapDeserializer {
-    iter: std::collections::hash_map::IntoIter<String, Value>,
+    iter: hashbrown::hash_map::IntoIter<String, Value>,
     value: Option<Value>,
 }
 

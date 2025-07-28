@@ -15,9 +15,9 @@ resolver = "2"
 
 [workspace.dependencies]
 thiserror = "2.0.12"
-nom = "8.0.0"
 winnow = "0.7.11"
 ariadne = "0.5.1"
+hashbrown = "0.15.4"
 
 [dependencies]
 devconf-lexer = { path = "crates/devconf-lexer" }
@@ -25,3 +25,4 @@ devconf-ast = { path = "crates/devconf-ast" }
 devconf-runtime = { path = "crates/devconf-runtime" }
 serde = { version = "1.0", features = ["derive"] }
 thiserror.workspace = true
+hashbrown.workspace = true
