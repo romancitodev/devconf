@@ -31,6 +31,7 @@ impl Value {
         match self {
             Self::Integer(n) => Some(*n as f64),
             Self::Float(f) => Some(*f),
+            Self::String(s) => s.parse().ok(),
             _ => None,
         }
     }
@@ -50,6 +51,7 @@ impl Value {
         match self {
             Self::Integer(n) => Some(*n),
             Self::Float(f) => Some(*f as i64),
+            Self::String(s) => s.parse().ok(),
             _ => None,
         }
     }

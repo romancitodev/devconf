@@ -11,7 +11,6 @@ app: {
 }
 app.name: Project
 app.debug: ${NODE_ENV == "debug"}
-
 app.port: ${APP_PORT:int || 8080}
 
 @template microservice(name, port, database=null):
@@ -26,8 +25,9 @@ app.port: ${APP_PORT:int || 8080}
 @use microservice("order", 8002, "orders_db")
 @use microservice("notification", 8003)
 
+
 # Additional service-specific config
-services."user-service".cache.enabled: true
-services."user-service".cache.ttl: 300
-services."order-service".queue.type: "redis"
-services."order-service".queue.url: ${REDIS_URL}
+services.user.cache.enabled: true
+services.user.cache.ttl: 300
+services.order.queue.type: "redis"
+services.order.queue.url: ${REDIS_URL}

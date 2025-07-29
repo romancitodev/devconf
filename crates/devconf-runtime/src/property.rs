@@ -61,7 +61,6 @@ impl Table {
     }
 
     fn resolve_bin_op_value(op: &AstBinaryOp, left: AstExpr, right: AstExpr) -> Value {
-        // println!("Resolving binary operation: {op:?} with left: {left:?} and right: {right:?}");
         match op {
             AstBinaryOp::Eq => {
                 Value::Boolean(Self::resolve_expr(left) == Self::resolve_expr(right))

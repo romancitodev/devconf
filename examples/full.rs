@@ -61,7 +61,7 @@ fn main() {
 
     let config: Config = from_str(&path).unwrap();
 
-    println!("{config:#?}");
+    // println!("{config:#?}");
 
     let serialized = ser::to_string(&config).unwrap();
 
