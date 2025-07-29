@@ -1,0 +1,446 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "devconf",
+  "scopeName": "source.devconf",
+  "patterns": [
+    {
+      "include": "#comment"
+    },
+    {
+      "include": "#directive"
+    },
+    {
+      "include": "#template"
+    },
+    {
+      "include": "#propertyDefinition"
+    },
+    {
+      "include": "#keywords"
+    },
+    {
+      "include": "#interpolation"
+    },
+    {
+      "include": "#string"
+    },
+    {
+      "include": "#number"
+    },
+    {
+      "include": "#boolean"
+    },
+    {
+      "include": "#operator"
+    },
+    {
+      "include": "#brackets"
+    },
+    {
+      "include": "#array"
+    },
+    {
+      "include": "#constant"
+    },
+    {
+      "include": "#identifier"
+    }
+  ],
+  "repository": {
+    "comment": {
+      "patterns": [
+        {
+          "name": "comment.line.number-sign.devconf",
+          "match": "#.*$"
+        }
+      ]
+    },
+    "directive": {
+      "patterns": [
+        {
+          "name": "meta.directive.use.devconf",
+          "begin": "(@use)\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\s*(\\()",
+          "beginCaptures": {
+            "1": {
+              "name": "keyword.control.directive.use.devconf"
+            },
+            "2": {
+              "name": "entity.name.function.directive.devconf"
+            },
+            "3": {
+              "name": "punctuation.definition.parameters.begin.devconf"
+            }
+          },
+          "end": "\\)",
+          "endCaptures": {
+            "0": {
+              "name": "punctuation.definition.parameters.end.devconf"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#string"
+            },
+            {
+              "include": "#number"
+            },
+            {
+              "include": "#boolean"
+            },
+            {
+              "include": "#constant"
+            },
+            {
+              "name": "punctuation.separator.parameter.devconf",
+              "match": ","
+            }
+          ]
+        },
+        {
+          "name": "meta.directive.if.devconf",
+          "begin": "(@if)\\s+",
+          "beginCaptures": {
+            "1": {
+              "name": "keyword.control.conditional.if.devconf"
+            }
+          },
+          "end": "\\s*(:)",
+          "endCaptures": {
+            "1": {
+              "name": "punctuation.section.block.begin.devconf"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#interpolation"
+            },
+            {
+              "include": "#operator"
+            },
+            {
+              "include": "#string"
+            },
+            {
+              "include": "#number"
+            },
+            {
+              "include": "#boolean"
+            },
+            {
+              "include": "#constant"
+            }
+          ]
+        },
+        {
+          "name": "meta.directive.else.devconf",
+          "match": "(@else)\\s*(:)",
+          "captures": {
+            "1": {
+              "name": "keyword.control.conditional.else.devconf"
+            },
+            "2": {
+              "name": "punctuation.section.block.begin.devconf"
+            }
+          }
+        }
+      ]
+    },
+    "template": {
+      "name": "meta.template.definition.devconf",
+      "begin": "(@template)\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\s*(\\()",
+      "beginCaptures": {
+        "1": {
+          "name": "keyword.control.directive.use.devconf"
+        },
+        "2": {
+          "name": "entity.name.function.template.devconf"
+        },
+        "3": {
+          "name": "punctuation.definition.parameters.begin.devconf"
+        }
+      },
+      "end": "\\s*(:)",
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.section.template.body.begin.devconf"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#string"
+        },
+        {
+          "include": "#number"
+        },
+        {
+          "include": "#boolean"
+        },
+        {
+          "include": "#constant"
+        },
+        {
+          "name": "variable.parameter.template.devconf",
+          "match": "\\b([a-zA-Z_][a-zA-Z]*)\\b"
+        },
+        {
+          "name": "keyword.operator.assignment.default.devconf",
+          "match": "="
+        },
+        {
+          "name": "punctuation.separator.parameter.devconf",
+          "match": ","
+        },
+        {
+          "name": "punctuation.definition.parameters.end.devconf",
+          "match": "\\)"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.devconf",
+          "match": "@(?:template|use|if|else)\\b"
+        }
+      ]
+    },
+    "interpolation": {
+      "patterns": [
+        {
+          "name": "meta.interpolation.devconf",
+          "begin": "\\$\\{",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.definition.template-expression.begin.devconf"
+            }
+          },
+          "end": "\\}",
+          "endCaptures": {
+            "0": {
+              "name": "punctuation.definition.template-expression.end.devconf"
+            }
+          },
+          "patterns": [
+            {
+              "match": "([A-Z_][A-Z0-9_]*)(?=s*(?::|==|!=||||&&|}|$))",
+              "name": "variable.other.constant.env.devconf"
+            },
+            {
+              "match": "\\b(int|float|bool|string)\\b",
+              "name": "storage.type.devconf"
+            },
+            {
+              "match": ":",
+              "name": "punctuation.separator.key-value.devconf"
+            },
+            {
+              "include": "#string"
+            },
+            {
+              "include": "#number"
+            },
+            {
+              "include": "#boolean"
+            },
+            {
+              "include": "#operator"
+            },
+            {
+              "include": "#constant"
+            },
+            {
+              "include": "#identifier"
+            }
+          ]
+        }
+      ]
+    },
+    "string": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.devconf",
+          "begin": "\"",
+          "end": "\""
+        },
+        {
+          "name": "string.quoted.single.devconf",
+          "begin": "'",
+          "end": "'"
+        }
+      ]
+    },
+    "number": {
+      "patterns": [
+        {
+          "name": "constant.numeric.float.devconf",
+          "match": "(?<![\\w.])\\d+(?:_\\d+)*\\.\\d+(?:_\\d+)*(?![\\w.])"
+        },
+        {
+          "name": "constant.numeric.integer.devconf",
+          "match": "(?<![\\w.])\\d+(?:_\\d+)*(?![\\w.])"
+        }
+      ]
+    },
+    "boolean": {
+      "patterns": [
+        {
+          "name": "constant.language.boolean.devconf",
+          "match": "\\b(?:true|false|null)\\b"
+        }
+      ]
+    },
+    "operator": {
+      "patterns": [
+        {
+          "name": "keyword.operator.assignment.devconf",
+          "match": "=|:"
+        },
+        {
+          "name": "keyword.operator.comparison.devconf",
+          "match": "==|!=|<|>|<=|>="
+        },
+        {
+          "name": "keyword.operator.logical.devconf",
+          "match": "\\|\\||&&"
+        }
+      ]
+    },
+    "brackets": {
+      "patterns": [
+        {
+          "name": "punctuation.section.brackets.devconf",
+          "match": "[\\{\\}]"
+        }
+      ]
+    },
+    "array": {
+      "patterns": [
+        {
+          "name": "meta.sequence.array.devconf",
+          "begin": "\\[",
+          "end": "\\]",
+          "patterns": [
+            {
+              "include": "#string"
+            },
+            {
+              "include": "#number"
+            },
+            {
+              "include": "#boolean"
+            },
+            {
+              "include": "#constant"
+            },
+            {
+              "include": "#identifier"
+            },
+            {
+              "include": "#operator"
+            },
+            {
+              "include": "#brackets"
+            },
+            {
+              "name": "punctuation.separator.comma.devconf",
+              "match": ","
+            }
+          ]
+        }
+      ]
+    },
+    "constant": {
+      "patterns": [
+        {
+          "name": "constant.language.devconf",
+          "match": "\\b(true|false|null)\\b"
+        }
+      ]
+    },
+    "identifier": {
+      "patterns": [
+        {
+          "name": "support.type.property-name.devconf",
+          "match": "(?<![\\w.])[a-zA-Z_][a-zA-Z0-9_]*(?=\\.|\\s*:)"
+        },
+        {
+          "name": "punctuation.accessor.dot.devconf",
+          "match": "\\."
+        },
+        {
+          "name": "support.type.property-name.nested.devconf",
+          "match": "(?<=\\.)[a-zA-Z_][a-zA-Z0-9_\\-]*(?=\\.|\\s*:)"
+        },
+        {
+          "name": "variable.other.readwrite.devconf",
+          "match": "[a-zA-Z_][a-zA-Z0-9_]*"
+        },
+        {
+          "name": "string.quoted.double.property.devconf",
+          "match": "\"[a-zA-Z0-9_\\-]+\"(?=\\s*\\.)"
+        }
+      ]
+    },
+    "propertyDefinition": {
+      "patterns": [
+        {
+          "name": "meta.property.definition.devconf",
+          "begin": "((?:[a-zA-Z_][a-zA-Z0-9_]*|\"[a-zA-Z0-9_\\-]+\")(?:\\.[a-zA-Z0-9_\\-\"]+)*)\\s*(\\:)\\s*",
+          "beginCaptures": {
+            "1": {
+              "patterns": [
+                {
+                  "match": "([a-zA-Z_][a-zA-Z0-9_]*)",
+                  "name": "support.type.property-name.devconf"
+                },
+                {
+                  "match": "\\.([a-zA-Z_][a-zA-Z0-9_\\-]*)",
+                  "captures": {
+                    "1": {
+                      "name": "support.type.property-name.nested.devconf"
+                    }
+                  }
+                },
+                {
+                  "match": "\\.(\"[a-zA-Z0-9_\\-]+\")",
+                  "captures": {
+                    "1": {
+                      "name": "string.quoted.double.property.devconf"
+                    }
+                  }
+                }
+              ]
+            },
+            "2": {
+              "name": "punctuation.separator.key-value.devconf"
+            }
+          },
+          "end": "(?=$|\\s|#)",
+          "patterns": [
+            {
+              "include": "#string"
+            },
+            {
+              "include": "#number"
+            },
+            {
+              "include": "#boolean"
+            },
+            {
+              "include": "#interpolation"
+            },
+            {
+              "include": "#constant"
+            },
+            {
+              "include": "#array"
+            },
+            {
+              "include": "#brackets"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "name": "devconf",
+  "displayName": "devconf",
+  "description": "source",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.102.0"
+  },
+  "scripts": {
+    "dev": "bun --watch src/build.ts"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [{
+      "id": "devconf",
+      "aliases": ["devconf"],
+      "extensions": [".devconf"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "devconf",
+      "scopeName": "source.devconf",
+      "path": "./syntaxes/devconf.tmLanguage.json"
+    }]
+  }
+}

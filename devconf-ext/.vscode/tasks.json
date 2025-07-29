@@ -1,0 +1,15 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Restart Extension Host",
+			"type": "shell",
+			"command": "echo",
+			"args": [
+				"Restarting Extension Host..."
+			],
+			"group": "none",
+			"isBackground": false
+		}
+	]
+}
