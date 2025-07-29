@@ -357,7 +357,6 @@ impl ser::SerializeStruct for StructSerializer<'_> {
         }
         self.first = false;
 
-        // Check if this is a nested struct that should be serialized as nested properties
         let mut temp_serializer = Serializer {
             output: String::new(),
             current_key: None,
@@ -366,19 +365,15 @@ impl ser::SerializeStruct for StructSerializer<'_> {
 
         value.serialize(&mut temp_serializer)?;
 
-        // If the value looks like a flat property list (no braces), handle it as dot notation
         if temp_serializer.output.contains('\n') && !temp_serializer.output.starts_with('{') {
-            // This is a nested struct - convert to dot notation
             for line in temp_serializer.output.lines() {
+                self.serializer.output.push('\n');
                 if !line.trim().is_empty() {
                     use std::fmt::Write as _;
                     write!(self.serializer.output, "{key}.{line}").unwrap();
-                    self.serializer.output.push('\n');
+                } else if self.serializer.output.ends_with("\n\n") {
+                    self.serializer.output.pop();
                 }
-            }
-            // Remove the last newline
-            if self.serializer.output.ends_with('\n') {
-                self.serializer.output.pop();
             }
         } else {
             // Regular property

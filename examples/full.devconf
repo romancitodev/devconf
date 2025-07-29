@@ -22,9 +22,9 @@ app.port: ${APP_PORT:int || 8080}
 		services.${name}.database: ${database}
 
 # Define services using dot notation
-@use microservice("user-service", 8001, "users_db")
-@use microservice("order-service", 8002, "orders_db")
-@use microservice("notification-service", 8003)
+@use microservice("user", 8001, "users_db")
+@use microservice("order", 8002, "orders_db")
+@use microservice("notification", 8003)
 
 # Additional service-specific config
 services."user-service".cache.enabled: true

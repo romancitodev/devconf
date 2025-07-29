@@ -1,6 +1,6 @@
 use std::fs;
 
-use devconf_rs::de::from_str;
+use devconf_rs::{de::from_str, ser};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
 struct Config {
@@ -24,12 +24,12 @@ struct App {
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
 struct Services {
-    #[serde(rename = "user-service")]
-    user_service: Service,
-    #[serde(rename = "order-service")]
-    order_service: Service,
-    #[serde(rename = "notification-service")]
-    notification_service: Service,
+    #[serde(rename = "user")]
+    user: Service,
+    #[serde(rename = "order")]
+    order: Service,
+    #[serde(rename = "notification")]
+    notification: Service,
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
@@ -62,4 +62,8 @@ fn main() {
     let config: Config = from_str(&path).unwrap();
 
     println!("{config:#?}");
+
+    let serialized = ser::to_string(&config).unwrap();
+
+    println!("{serialized}");
 }
